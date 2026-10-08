@@ -311,10 +311,8 @@ def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout):
         x0 = L.text_x[0]
     y_name, y_ts, y_sub = L.head_y
     fig.text(x0, y_name, tw.team_name, fontsize=F["team"], color=TEXT, weight="medium", va="top")
-    fig.text(x0, y_ts, "Target Share", fontsize=F["ts"], color=accent(tw.colors), weight="medium", va="top")
-    score = f"{tw.result} {tw.team_score}\u2013{tw.opp_score}"
-    sub = f"Week {tw.week} · {tw.matchup} · {score} · {tw.total_targets} targets"
-    fig.text(x0, y_sub, sub, fontsize=F["sub"], color=MUTED, va="top")  # subscript
+    fig.text(x0, y_ts, tw.title, fontsize=F["ts"], color=accent(tw.colors), weight="medium", va="top")
+    fig.text(x0, y_sub, tw.subtitle, fontsize=F["sub"], color=MUTED, va="top")  # subscript
 
     credit = "Data: nflverse (pbp, PFR snaps)" + (", FTN charting" if tw.drops_available else "")
     if L.footer:
@@ -372,20 +370,29 @@ def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets
     ppd = ax.get_position().height * fig.get_figheight() * fig.dpi / np.ptp(ax.get_ylim())
     pt = fig.dpi / 72
     first = 0 if share >= 0.18 else 1 if share >= 0.10 else 2
+    # Also slide the label along the slice (big diagonal slices fit a tall label better
+    # nearer 3 or 9 o'clock than at their exact middle).
+    sweep_deg = theta2 - theta1
+    angles = [mid] + [math.radians((theta1 + theta2) / 2 + sgn * f * sweep_deg)
+                      for f in (0.12, 0.22, 0.30) for sgn in (1, -1)]
     r = diam = fs = None
     for i, (td, tfs) in enumerate(L.tiers[first:], start=first):
         tr = 0.64 + 0.01 * i
         stack_h = (td + (tfs[0] + tfs[1] + (tfs[2] if sub else 0)) * 1.25 * pt) / ppd
         text_w = max(len(name) * tfs[0], len(stat) * tfs[1], td / pt) * 0.52 * pt / ppd
-        for rr in (tr, tr + 0.04, tr - 0.04):
-            if _box_in_slice(rr * math.cos(mid), rr * math.sin(mid), text_w, stack_h, theta1, theta2, ppd):
-                r, diam, fs = rr, td, tfs
+        for ang in angles:
+            for rr in (tr, tr + 0.04, tr - 0.04):
+                if _box_in_slice(rr * math.cos(ang), rr * math.sin(ang), text_w, stack_h, theta1, theta2, ppd):
+                    r, diam, fs, mid = rr, td, tfs, ang
+                    break
+            if r is not None:
                 break
         if r is not None:
             break
 
     F = L.font
     if r is None:
+        mid = math.radians((theta1 + theta2) / 2)
         # thin slice: small headshot near the rim, text running along the radius
         deg = (theta1 + theta2) / 2
         rot = deg if -90 <= ((deg + 180) % 360 - 180) <= 90 else deg + 180
@@ -471,8 +478,7 @@ def _bars(fig, tw: TeamWeek, colors: dict, L: Layout):
     F = L.font
     x0, ty, sy = L.snap_xy
     fig.text(x0, ty, "Snap %", fontsize=F["snap_title"], color=TEXT, weight="medium", va="top")
-    fig.text(x0, sy, f"Share of the team's {tw.team_snaps} offensive snaps", fontsize=F["snap_sub"],
-             color=MUTED, va="top")  # subscript
+    fig.text(x0, sy, tw.snap_subtitle, fontsize=F["snap_sub"], color=MUTED, va="top")  # subscript
 
     players = tw.by_snaps()[:MAX_BARS]
     ax = fig.add_axes(L.bars)

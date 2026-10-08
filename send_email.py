@@ -64,7 +64,9 @@ def build(season: int, week: int, url: str, sender: str, bcc: list[str], note: s
     if bcc:
         msg["Bcc"] = ", ".join(bcc)
 
-    text = [f"Week {week} target share + snap % for every team is up:", url, ""]
+    l4 = url.rstrip("/") + "/#l4"
+    text = [f"Week {week} target share + snap % for every team is up:", url, "",
+            "Last 4 games (rolling) view:", l4, ""]
     if lines:
         text += ["Biggest target shares this week:"] + [f"  - {x}" for x in lines] + [""]
     if note:
@@ -80,6 +82,8 @@ def build(season: int, week: int, url: str, sender: str, bcc: list[str], note: s
   <p style="text-align:center;margin:20px 0">
     <a href="{html.escape(url)}" style="background:#14171d;color:#fff;text-decoration:none;padding:12px 22px;
        border-radius:8px;font-weight:600;display:inline-block">Open the Week {week} report</a></p>
+  <p style="text-align:center;margin:-6px 0 18px;font-size:15px">
+    <a href="{html.escape(l4)}" style="color:#14171d">or jump to the Last 4 games view</a></p>
   {f"<p style='font-size:15px;margin-bottom:4px'><b>Biggest target shares this week</b></p><ul style='font-size:15px;padding-left:18px;margin-top:4px'>{items}</ul>" if items else ""}
   {f"<p style='font-size:14px;color:#555'>{html.escape(note)}</p>" if note else ""}
   <p style="font-size:12px;color:#888">Data: nflverse (play-by-play, PFR snap counts, FTN charting).</p>

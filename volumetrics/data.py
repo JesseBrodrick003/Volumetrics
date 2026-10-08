@@ -67,6 +67,11 @@ class PlayerLine:
     prior_tgt_share: float | None = None
     prior_snap_pct: float | None = None
     prior_games: int = 0
+    # rolling window only: one value per game in the window, oldest first (None = didn't play)
+    wk_share: list = field(default_factory=list)
+    wk_snap: list = field(default_factory=list)
+    wk_targets: list = field(default_factory=list)
+    games: int = 0
 
 
 @dataclass
@@ -100,6 +105,24 @@ class TeamWeek:
     @property
     def matchup(self) -> str:
         return f"{'vs' if self.home else '@'} {self.opponent}"
+
+    # Text the chart uses, so a week and a rolling window render with the same code
+    @property
+    def title(self) -> str:
+        return "Target Share"
+
+    @property
+    def subtitle(self) -> str:
+        score = f"{self.result} {self.team_score}\u2013{self.opp_score}"
+        return f"Week {self.week} · {self.matchup} · {score} · {self.total_targets} targets"
+
+    @property
+    def snap_subtitle(self) -> str:
+        return f"Share of the team's {self.team_snaps} offensive snaps"
+
+    @property
+    def span(self) -> str:
+        return ""  # appended to sentences in the takes, e.g. " over the last 4 games"
 
     def by_targets(self) -> list[PlayerLine]:
         return sorted(
@@ -373,6 +396,104 @@ def _prior_context(tg_prior: pl.DataFrame, sn_prior: pl.DataFrame) -> dict[str, 
         pl.col("position").last(),
     )
     return {r["gsis_id"]: r for r in agg.to_dicts()}
+
+
+# --------------------------------------------------------------------------- #
+# Rolling window: the team's last N games played (byes skipped)
+# --------------------------------------------------------------------------- #
+@dataclass
+class Window(TeamWeek):
+    weeks: list = field(default_factory=list)  # weeks in the window, oldest first
+    record: str = ""
+
+    @property
+    def n(self) -> int:
+        return len(self.weeks)
+
+    @property
+    def title(self) -> str:
+        return f"Target Share · Last {self.n} Games"
+
+    @property
+    def subtitle(self) -> str:
+        wk = f"Weeks {self.weeks[0]}\u2013{self.weeks[-1]}" if self.n > 1 else f"Week {self.weeks[0]}"
+        return f"{wk} · {self.record} · {self.total_targets} targets"
+
+    @property
+    def snap_subtitle(self) -> str:
+        return f"Share of the team's {self.team_snaps} offensive snaps over {self.n} games"
+
+    @property
+    def span(self) -> str:
+        return f" over the last {self.n} games"
+
+
+def team_games(season: int, week: int, team: str, n: int) -> list[int]:
+    """Weeks of the team's last n completed games up to `week` (bye weeks naturally skipped)."""
+    f = load_season(season)
+    g = f["sched"].filter(
+        (pl.col("week") <= week) & pl.col("result").is_not_null()
+        & ((pl.col("home_team") == team) | (pl.col("away_team") == team))
+    )
+    snap_weeks = set(f["snaps"].filter(pl.col("team") == team)["week"].unique().to_list())
+    weeks = sorted(w for w in g["week"].unique().to_list() if w in snap_weeks)
+    return weeks[-n:]
+
+
+def build_team_window(season: int, week: int, team: str, n: int = 4) -> Window | None:
+    """Sum the last n games: shares are totals over the window (targets / team targets,
+    snaps / team snaps), so a game a player missed counts as zero for that game."""
+    weeks = team_games(season, week, team, n)
+    games = [g for g in (build_team_week(season, w, team) for w in weeks) if g is not None]
+    if not games:
+        return None  # teams on bye still get their last n games, just not a new one
+    weeks = [g.week for g in games]
+    total_t = sum(g.total_targets for g in games)
+    total_s = sum(g.team_snaps for g in games)
+    wins = sum(g.result == "W" for g in games)
+    losses = sum(g.result == "L" for g in games)
+    ties = sum(g.result == "T" for g in games)
+    record = f"{wins}\u2013{losses}" + (f"\u2013{ties}" if ties else "")
+
+    agg: dict[str, PlayerLine] = {}
+    for i, g in enumerate(games):
+        for p in g.players:
+            key = p.gsis_id or f"name:{p.full_name}"
+            if key not in agg:
+                agg[key] = PlayerLine(
+                    gsis_id=p.gsis_id, name=p.name, full_name=p.full_name, position=p.position,
+                    headshot=p.headshot, headshot_alt=p.headshot_alt,
+                    wk_share=[None] * len(games), wk_snap=[None] * len(games), wk_targets=[0] * len(games),
+                )
+            a = agg[key]
+            a.targets += p.targets
+            a.rz_targets += p.rz_targets
+            a.drops += p.drops
+            a.receptions += p.receptions
+            a.rec_yards += p.rec_yards
+            a.rec_tds += p.rec_tds
+            a.snaps += p.snaps
+            if p.snaps > 0 or p.targets > 0:
+                a.wk_share[i] = p.tgt_share
+                a.wk_snap[i] = p.snap_pct
+                a.wk_targets[i] = p.targets
+                a.games += 1
+            if p.position:
+                a.position = p.position
+            a.headshot = p.headshot or a.headshot  # most recent photo wins
+    for a in agg.values():
+        a.tgt_share = a.targets / total_t if total_t else 0.0
+        a.snap_pct = a.snaps / total_s if total_s else 0.0
+
+    last = games[-1]
+    return Window(
+        season=season, week=week, team=team, team_name=last.team_name, nick=last.nick,
+        colors=last.colors, logo_url=last.logo_url, opponent=last.opponent, home=last.home,
+        team_score=last.team_score, opp_score=last.opp_score, total_targets=total_t,
+        total_rz_targets=sum(g.total_rz_targets for g in games), team_snaps=total_s,
+        drops_available=all(g.drops_available for g in games),
+        players=list(agg.values()), absent=[], weeks=weeks, record=record,
+    )
 
 
 def to_rows(tw: TeamWeek) -> list[dict]:

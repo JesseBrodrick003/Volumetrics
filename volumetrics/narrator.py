@@ -44,6 +44,8 @@ Hard rules:
   player history, or anything not in the data. If a player had 0 snaps, say he didn't
   play; do not guess why.
 - Every number you state must appear in the data. Round percentages to whole numbers.
+- For a rolling window, talk about trends across the games (rising, falling, steady) and say
+  "over the last N games"; a game a player missed is not a role change.
 - 45-85 words, one paragraph, no hashtags, no emojis, no headings, no bullet points.
 - Output the take text only."""
 
@@ -64,10 +66,15 @@ def _facts(tw: TeamWeek, take: Take) -> dict:
             "prior_avg_target_share": None if p.prior_tgt_share is None else round(p.prior_tgt_share * 100),
             "prior_avg_snap_pct": None if p.prior_snap_pct is None else round(p.prior_snap_pct * 100),
             "prior_games": p.prior_games,
+            **({"weekly_target_share_oldest_first": [None if x is None else round(x * 100) for x in p.wk_share],
+                "weekly_snap_pct_oldest_first": [None if x is None else round(x * 100) for x in p.wk_snap]}
+               if p.wk_share else {}),
         })
     return {
+        "view": (f"rolling window: totals over the team's last {tw.n} games (weeks {tw.weeks})"
+                 if hasattr(tw, "weeks") else "single game"),
         "team": tw.team_name, "week": tw.week, "season": tw.season,
-        "game": f"{tw.matchup}, {tw.result} {tw.team_score}-{tw.opp_score}",
+        "game": (tw.subtitle if hasattr(tw, "weeks") else f"{tw.matchup}, {tw.result} {tw.team_score}-{tw.opp_score}"),
         "team_targets": tw.total_targets, "team_red_zone_targets": tw.total_rz_targets,
         "team_offensive_snaps": tw.team_snaps,
         "players": players,

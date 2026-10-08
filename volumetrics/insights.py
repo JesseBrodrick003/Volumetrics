@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
-from .data import PlayerLine, TeamWeek
+from .data import PlayerLine, TeamWeek, Window
 
 ALPHA_MONSTER = 0.40  # "when a receiver gets over 40% of targets..."
 ALPHA = 0.28  # clear No. 1
@@ -319,6 +319,159 @@ def write_take(tw: TeamWeek, signals: list[Signal], max_main: int = 3) -> Take:
     r = tw.by_targets()
     if n_main < 2 and len(r) >= 2 and r[0].name not in used_players:  # thin week: anchor on the leader
         chosen.insert(0, Signal("leaders", 1, r[0].name, "top two by targets",
-                                f"{r[0].name} led the way with {r[0].targets} targets ({pct(r[0].tgt_share)}), "
+                                f"{r[0].name} led the way with {r[0].targets} targets ({pct(r[0].tgt_share)}){tw.span}, "
                                 f"with {r[1].name} next at {r[1].targets} ({pct(r[1].tgt_share)})."))
     return Take(text=" ".join(s.line for s in chosen), signals=chosen)
+
+
+# --------------------------------------------------------------------------- #
+# Rolling window ("Last 4 games" tab): trends instead of one-week blips
+# --------------------------------------------------------------------------- #
+W_LOCKED, W_LOCKED_FLOOR = 0.27, 0.20  # owns it: high share AND never below 20% in the window
+W_ALPHA = 0.25
+W_TREND = 0.08  # last-2-games avg vs first-2-games avg
+W_SNAP_TREND = 0.15
+W_CONDENSED = 0.55  # top two combined
+W_RZ_MIN, W_RZ_SHARE = 4, 0.35
+
+
+def _avg(xs):
+    xs = [x for x in xs if x is not None]
+    return sum(xs) / len(xs) if xs else None
+
+
+def _halves(vals: list, fill_zero: bool = True):
+    """(avg of first two games, avg of last two games). Missed games count as 0 share."""
+    v = [(0.0 if x is None else x) if fill_zero else x for x in vals]
+    if len(v) < 3:
+        return None, None
+    k = len(v) // 2
+    return _avg(v[:k]), _avg(v[-k:])
+
+
+def detect_window_signals(w: Window) -> list[Signal]:
+    S: list[Signal] = []
+    seed = (w.season, w.week, w.team, "w")
+    ranked = w.by_targets()
+    if not ranked or w.n < 2:
+        return S
+    n = w.n
+    top = ranked[0]
+    second = ranked[1] if len(ranked) > 1 else None
+    catchers = [p for p in w.players if p.position in {"WR", "TE", "RB", "FB"}]
+    played = [x for x in top.wk_share if x is not None]
+
+    # Who owns this offense
+    if top.tgt_share >= W_LOCKED and len(played) == n and min(played) >= W_LOCKED_FLOOR:
+        S.append(Signal("locked", 10, top.name,
+                        f"{top.name}: {top.tgt_share:.1%} share over {n} games, never below {pct(min(played))}",
+                        _pick([
+                            f"{top.name} owns this offense: {pct(top.tgt_share)} of the targets over the last {n} games, "
+                            f"and he hasn't dipped below {pct(min(played))} in any of them. That's as safe as it gets.",
+                            f"{top.targets} targets for {top.name} over the last {n}, {pct(top.tgt_share)} of the pie, "
+                            f"and at least {pct(min(played))} every single week. I'm riding this.",
+                        ], *seed, "locked")))
+    elif top.tgt_share >= W_ALPHA:
+        lo, hi = (min(played), max(played)) if played else (0, 0)
+        if hi - lo >= 0.15:
+            S.append(Signal("alpha_swingy", 8, top.name,
+                            f"{top.name}: {top.tgt_share:.1%} share over {n}; weekly range {pct(lo)}-{pct(hi)}",
+                            f"{top.name} leads this team at {pct(top.tgt_share)} of the targets over the last {n}, "
+                            f"but it's swung anywhere from {pct(lo)} to {pct(hi)} week to week. Expect some boom and some bust."))
+        else:
+            S.append(Signal("alpha", 8, top.name, f"{top.name}: {top.tgt_share:.1%} share over {n} games",
+                            f"{top.name} is the clear No. 1 over the last {n} games: {top.targets} targets, {pct(top.tgt_share)} of the share."))
+
+    if second and top.tgt_share >= 0.20 and second.tgt_share >= 0.20 and top.tgt_share - second.tgt_share <= 0.04:
+        S.append(Signal("co_alpha", 7, f"{top.name}+{second.name}",
+                        f"{top.name} {top.tgt_share:.1%} vs {second.name} {second.tgt_share:.1%} over {n}",
+                        f"{top.name} ({pct(top.tgt_share)}) and {second.name} ({pct(second.tgt_share)}) are basically "
+                        f"splitting the top role over the last {n} games."))
+
+    # Trends inside the window
+    for p in sorted(catchers, key=lambda p: -p.targets):
+        a, b = _halves(p.wk_share)
+        if a is None:
+            continue
+        sa, sb = _halves(p.wk_snap)
+        if b - a >= W_TREND and b >= 0.15:
+            extra = f" His snaps went from {pct(sa)} to {pct(sb)} too." if sa is not None and sb - sa >= 0.10 else ""
+            S.append(Signal("trend_up", 8, p.name,
+                            f"{p.name}: {pct(a)} share in the first games of the window -> {pct(b)} in the latest",
+                            _pick([
+                                f"{p.name} is trending the right way: {pct(a)} of the targets early in this stretch, "
+                                f"{pct(b)} in the last two games.{extra} Get him before everyone notices.",
+                                f"Notice {poss(p.name)} share climbing: {pct(a)} to {pct(b)} over the last {n} games.{extra} "
+                                f"That's a role that's growing.",
+                            ], *seed, "up", p.name)))
+        elif a - b >= W_TREND and a >= 0.18:
+            k = len(p.wk_snap) // 2
+            missed = [w.weeks[i] for i in range(len(p.wk_snap) - k, len(p.wk_snap)) if p.wk_snap[i] is None]
+            if missed:  # a missed game isn't a role change; say what the data actually shows
+                wk = " and ".join(f"Week {x}" for x in missed)
+                line = (f"{p.name} didn't play in {wk} after drawing {pct(a)} of the targets early in this stretch. "
+                        f"If he's back, he should slide right back into that role, so watch his status.")
+            elif sa is not None and sa - sb >= 0.15:
+                line = (f"{p.name} is heading the wrong way: {pct(a)} of the targets early in this stretch, {pct(b)} lately, "
+                        f"and his snaps fell from {pct(sa)} to {pct(sb)}. That's a real role change.")
+            else:
+                line = (f"{poss(p.name)} share has slipped from {pct(a)} to {pct(b)}, but he's still playing "
+                        f"{pct(sb if sb is not None else p.snap_pct)} of the snaps. The role is there. This is a buy-low window.")
+            S.append(Signal("trend_down", 7, p.name,
+                            f"{p.name}: share {pct(a)} -> {pct(b)}; snaps {pct(sa or 0)} -> {pct(sb or 0)}", line))
+
+    for p in sorted(catchers, key=lambda p: -p.snaps):
+        sa, sb = _halves(p.wk_snap)
+        if sa is not None and sb - sa >= W_SNAP_TREND and sb >= 0.60:
+            S.append(Signal("snap_climb", 6, p.name, f"{p.name}: snaps {pct(sa)} -> {pct(sb)}",
+                            f"Notice {poss(p.name)} snaps went from {pct(sa)} to {pct(sb)} over this stretch. "
+                            f"The targets usually follow the snaps."))
+            break
+
+    for p in sorted(catchers, key=lambda p: -p.snap_pct):
+        if p.position in {"WR", "TE"} and p.snap_pct >= 0.85 and p.tgt_share <= 0.12:
+            S.append(Signal("snaps_no_looks", 5, p.name,
+                            f"{p.name}: {pct(p.snap_pct)} snaps, {pct(p.tgt_share)} share over {n}",
+                            f"{p.name} has been on the field for {pct(p.snap_pct)} of the snaps over the last {n} games "
+                            f"but is only drawing {pct(p.tgt_share)} of the targets."))
+            break
+
+    rz = max(ranked, key=lambda p: (p.rz_targets, p.tgt_share))
+    if rz.rz_targets >= W_RZ_MIN and w.total_rz_targets and rz.rz_targets / w.total_rz_targets >= W_RZ_SHARE:
+        S.append(Signal("red_zone", 6, rz.name, f"{rz.name}: {rz.rz_targets} of {w.total_rz_targets} team RZ targets over {n}",
+                        f"{rz.name} also has {_of_team(rz.rz_targets, w.total_rz_targets)} red-zone targets over the "
+                        f"last {n}. That's the touchdown role.", suffix_for=rz.name,
+                        standalone=f"{rz.name} has {_of_team(rz.rz_targets, w.total_rz_targets)} red-zone targets over "
+                                   f"the last {n}. That's the touchdown role."))
+
+    if second and top.tgt_share + second.tgt_share >= W_CONDENSED:
+        S.append(Signal("condensed", 5, None,
+                        f"{top.name} + {second.name} = {top.tgt_share + second.tgt_share:.1%} of targets over {n}",
+                        f"Over the last {n} games, {top.name} and {second.name} have soaked up "
+                        f"{pct(top.tgt_share + second.tgt_share)} of the targets. Nobody else here matters much for fantasy."))
+    elif top.tgt_share < 0.22 and len([p for p in ranked if p.tgt_share >= 0.10]) >= 4:
+        S.append(Signal("spread", 5, None, f"top share over {n} games {pct(top.tgt_share)}",
+                        f"Nobody has more than {pct(top.tgt_share)} of the targets over the last {n} games. "
+                        f"This target tree is flat, so it's hard to trust anyone week to week."))
+
+    for p in ranked:
+        if p.position == "RB" and p.tgt_share >= 0.13:
+            S.append(Signal("rb_targets", 4, p.name, f"{p.name} (RB): {pct(p.tgt_share)} share over {n}",
+                            f"{p.name} has {p.targets} targets out of the backfield over the last {n}. Steady PPR value."))
+            break
+    for p in ranked:
+        if p.position == "TE" and p.tgt_share >= 0.18 and p.name != top.name:
+            S.append(Signal("te_role", 4, p.name, f"{p.name} (TE): {pct(p.tgt_share)} share over {n}",
+                            f"{p.name} is getting {pct(p.tgt_share)} of the looks at tight end over the last {n}, "
+                            f"and that's a weekly starter."))
+            break
+
+    per_game = w.total_targets / n
+    if per_game >= 40:
+        S.append(Signal("volume_high", 3, None, f"{per_game:.1f} team targets per game over {n}",
+                        f"This team is throwing {per_game:.0f} times a game over the last {n}, so there's plenty of volume to go around."))
+    elif per_game <= 26:
+        S.append(Signal("volume_low", 3, None, f"{per_game:.1f} team targets per game over {n}",
+                        f"Only about {per_game:.0f} targets a game over the last {n}, which caps everyone's ceiling."))
+
+    return sorted(S, key=lambda s: -s.priority)

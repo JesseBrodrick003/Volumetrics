@@ -56,16 +56,34 @@ a{color:inherit}
 .leaders .tm i{display:inline-block;width:8px;height:8px;border-radius:50%%;background:var(--team);margin-right:7px;vertical-align:1px}
 .leaders .num{text-align:right;font-variant-numeric:tabular-nums;font-weight:500;width:4em}
 
-/* Team chips */
-nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%%,transparent);
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:16px -18px 0;padding:9px 18px;
-    border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+/* Sticky bar: view tabs + team chips */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%%,transparent);
+     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:16px -18px 0;padding:9px 0 9px 18px;
+     border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.tabs{display:none;flex:none;background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:3px}
+.js .tabs{display:flex}
+.tabs button{font:inherit;font-size:14px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:999px;
+             padding:6px 12px;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tabs button:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
+nav{overflow-x:auto;white-space:nowrap;scrollbar-width:none;flex:1;min-width:0;padding-right:18px}
 nav::-webkit-scrollbar{display:none}
 nav a{display:inline-flex;align-items:center;gap:6px;color:var(--muted);text-decoration:none;font-weight:500;
       font-size:14px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
 nav a i{width:7px;height:7px;border-radius:50%%;background:var(--team)}
 nav a[aria-current="true"]{color:var(--ink);border-color:var(--team);background:color-mix(in srgb,var(--team) 18%%,transparent)}
 nav a:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
+.panel-h{font-size:15px;font-weight:500;color:var(--muted);margin:22px 0 0;text-align:center}
+
+/* Week-by-week table under each last-4 card */
+.trend{width:100%%;border-collapse:separate;border-spacing:3px;margin:14px 0 0;font-size:14.5px;
+       font-variant-numeric:tabular-nums}
+.trend th{font-weight:500;color:var(--muted);font-size:12.5px;text-align:center;padding:2px 0}
+.trend th[scope="row"]{text-align:left;color:var(--ink);font-size:14.5px;white-space:nowrap;padding-right:6px;
+       max-width:8.5em;overflow:hidden;text-overflow:ellipsis}
+.trend td{text-align:center;padding:7px 0;border-radius:6px;min-width:2.9em}
+.trend td.dnp{color:var(--faint)}
+.trend td.tot{font-weight:600;background:var(--raise)}
 
 /* Team sections */
 section{padding:26px 0 22px;border-bottom:1px solid var(--line)}
@@ -87,7 +105,9 @@ footer{color:var(--faint);font-size:13px;margin-top:28px;line-height:1.6}
 /* Phones: cards go edge to edge so the type is as big as possible */
 @media (max-width:720px){
   .wrap{padding:0 14px 48px}
-  nav{margin:16px -14px 0;padding:9px 14px}
+  .bar{margin:16px -14px 0;padding:9px 0 9px 14px;gap:8px}
+  .tabs button{padding:6px 10px}
+  nav{padding-right:14px}
   section{padding:18px 0 20px}
   .card{margin:0 -14px;border-radius:0}
   .take{font-size:17.5px;margin-top:16px}
@@ -97,12 +117,26 @@ footer{color:var(--faint);font-size:13px;margin-top:28px;line-height:1.6}
 """
 
 JS = """
-(()=>{const chips=[...document.querySelectorAll('nav a')];const nav=document.querySelector('nav');
-const byId=Object.fromEntries(chips.map(a=>[a.hash.slice(1),a]));let cur=null;
-const io=new IntersectionObserver(es=>{for(const e of es){if(!e.isIntersecting)continue;const a=byId[e.target.id];
- if(!a||a===cur)continue;if(cur)cur.removeAttribute('aria-current');a.setAttribute('aria-current','true');cur=a;
- const l=a.offsetLeft-nav.clientWidth/2+a.clientWidth/2;nav.scrollTo({left:l,behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth'});}},
- {rootMargin:'-35% 0px -60% 0px'});document.querySelectorAll('section[id]').forEach(s=>io.observe(s));})();
+(()=>{const panels={wk:document.getElementById('p-wk'),l4:document.getElementById('p-l4')};
+const tabs=[...document.querySelectorAll('.tabs button')];const nav=document.querySelector('nav');
+const chips=[...nav.querySelectorAll('a')];const chip=t=>chips.find(a=>a.dataset.team===t);
+const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;let view='wk',cur=null;
+const sec=(t,v)=>document.getElementById(v==='l4'?t+'-l4':t);
+function mark(t){const a=chip(t);if(!a||a===cur)return;if(cur)cur.removeAttribute('aria-current');
+ a.setAttribute('aria-current','true');cur=a;nav.scrollTo({left:a.offsetLeft-nav.offsetLeft-nav.clientWidth/2+a.clientWidth/2,behavior:rm?'auto':'smooth'});}
+function show(v,keepTeam){if(!panels[v])return;view=v;for(const k in panels){if(panels[k])panels[k].hidden=k!==v;}
+ tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));
+ const t=keepTeam&&cur?cur.dataset.team:null;const target=t?sec(t,v):panels[v];
+ if(target)target.scrollIntoView({block:'start'});history.replaceState(null,'',v==='l4'?(t?'#'+t+'-l4':'#l4'):(t?'#'+t:'#'));}
+tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.view,true)));
+chips.forEach(a=>a.addEventListener('click',e=>{const s=sec(a.dataset.team,view);if(!s)return;e.preventDefault();
+ s.scrollIntoView({behavior:rm?'auto':'smooth',block:'start'});history.replaceState(null,'','#'+s.id);mark(a.dataset.team);}));
+const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)mark(e.target.dataset.team);},
+ {rootMargin:'-35% 0px -60% 0px'});document.querySelectorAll('section[data-team]').forEach(s=>io.observe(s));
+const h=location.hash.slice(1);const start=(h==='l4'||h.endsWith('-l4'))&&panels.l4?'l4':'wk';
+for(const k in panels){if(panels[k])panels[k].hidden=k!==start;}view=start;
+tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===start?'true':'false'));
+if(h&&h!=='l4'){const s=document.getElementById(h);if(s)s.scrollIntoView({block:'start'});}})();
 """
 
 
@@ -135,44 +169,89 @@ def _card(e: dict, week: int, embed: bool) -> str:
     )
 
 
-def build_page(season: int, week: int, entries: list[dict], out_file: Path, *, embed: bool = False,
+def _leaders_html(leaders: list[dict], title: str) -> str:
+    if not leaders:
+        return ""
+    rows = "".join(
+        f'<tr style="--team:{html.escape(r["color"])}"><td><a href="#{r["anchor"]}">{html.escape(r["label"])}</a></td>'
+        f'<td class="tm"><i aria-hidden="true"></i>{r["team"]}</td>'
+        f'<td class="num">{r["share"]:.0%}</td></tr>'
+        for r in leaders
+    )
+    return (f'<div class="leaders"><h2>{html.escape(title)}</h2>'
+            f'<table><caption class="sr">{html.escape(title)}</caption><tbody>{rows}</tbody></table></div>')
+
+
+def _trend_html(trend: dict | None) -> str:
+    """Week-by-week target share for the top receivers in the window, heat-shaded by share."""
+    if not trend or not trend.get("rows"):
+        return ""
+    head = "".join(f'<th scope="col">Wk {w}</th>' for w in trend["weeks"])
+    body = ""
+    for r in trend["rows"]:
+        cells = ""
+        for x in r["shares"]:
+            if x is None:
+                cells += '<td class="dnp" title="Did not play">\u2013</td>'
+            else:
+                a = min(60, round(x * 140))  # shade by share, capped so text stays readable
+                cells += f'<td style="background:color-mix(in srgb,var(--team) {a}%,transparent)">{x:.0%}</td>'
+        body += (f'<tr><th scope="row">{html.escape(r["name"])}</th>{cells}'
+                 f'<td class="tot">{r["total"]:.0%}</td></tr>')
+    return (f'<table class="trend"><caption class="sr">Target share by week</caption>'
+            f'<thead><tr><th scope="col" style="text-align:left">Target share</th>{head}'
+            f'<th scope="col">All</th></tr></thead><tbody>{body}</tbody></table>')
+
+
+def _sections(entries: list[dict], week: int, embed: bool, suffix: str) -> str:
+    out = []
+    for e in entries:
+        sid = e["team"] + suffix
+        why = "".join(f"<li>{html.escape(x)}</li>" for x in e["evidence"])
+        out.append(
+            f'<section id="{sid}" data-team="{e["team"]}" style="--team:{e["color"]}" aria-labelledby="h-{sid}">'
+            f'<h2 class="sr" id="h-{sid}">{html.escape(e["team_name"])}</h2>'
+            f"{_card(e, week, embed)}"
+            f"{_trend_html(e.get('trend'))}"
+            f'<p class="take">{html.escape(e["take"])}</p>'
+            + (f"<details><summary>Why this take</summary><ul>{why}</ul></details>" if why else "")
+            + "</section>"
+        )
+    return "".join(out)
+
+
+def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, embed: bool = False,
                rel_assets: str = "../../assets", missing: list[str] | None = None,
-               take_source: str = "template", leaders: list[dict] | None = None) -> Path:
-    """entries: [{team, team_name, color, img_path, img_rel, img_path_m, img_rel_m, take, evidence}]"""
+               take_source: str = "template") -> Path:
+    """
+    panels: [{key: "wk"|"l4", label, entries, leaders, leaders_title}] - first one shows by default.
+    entries: [{team, team_name, color, img_path, img_rel, img_path_m, img_rel_m, img_png_m, take,
+               evidence, trend?}]
+    """
     css = CSS % {
         "regular": _font_src("Regular", embed, rel_assets),
         "medium": _font_src("Medium", embed, rel_assets),
         "semibold": _font_src("SemiBold", embed, rel_assets),
         "embed_css": "@media (min-width:721px){.card{max-width:520px;margin:0 auto}}" if embed else "",
     }
+    teams = {e["team"]: e for p in panels for e in p["entries"]}
+    order = sorted(teams.values(), key=lambda e: e["team_name"])
     nav = "".join(
-        f'<a href="#{e["team"]}" style="--team:{e["color"]}"><i aria-hidden="true"></i>{e["team"]}</a>'
-        for e in entries
+        f'<a href="#{e["team"]}" data-team="{e["team"]}" style="--team:{e["color"]}"><i aria-hidden="true"></i>{e["team"]}</a>'
+        for e in order
     )
-
-    lead_html = ""
-    if leaders:
-        rows = "".join(
-            f'<tr style="--team:{html.escape(r["color"])}"><td><a href="#{r["team"]}">{html.escape(r["label"])}</a></td>'
-            f'<td class="tm"><i aria-hidden="true"></i>{r["team"]}</td>'
-            f'<td class="num">{r["share"]:.0%}</td></tr>'
-            for r in leaders
-        )
-        lead_html = (f'<div class="leaders"><h2>Top target shares this week</h2>'
-                     f'<table><caption class="sr">Top target shares, week {week}</caption>'
-                     f'<tbody>{rows}</tbody></table></div>')
-
-    sections = []
-    for e in entries:
-        why = "".join(f"<li>{html.escape(x)}</li>" for x in e["evidence"])
-        sections.append(
-            f'<section id="{e["team"]}" style="--team:{e["color"]}" aria-labelledby="h-{e["team"]}">'
-            f'<h2 class="sr" id="h-{e["team"]}">{html.escape(e["team_name"])}</h2>'
-            f"{_card(e, week, embed)}"
-            f'<p class="take">{html.escape(e["take"])}</p>'
-            + (f"<details><summary>Why this take</summary><ul>{why}</ul></details>" if why else "")
-            + "</section>"
-        )
+    tabs = "".join(
+        f'<button type="button" role="tab" data-view="{p["key"]}" aria-controls="p-{p["key"]}" '
+        f'aria-selected="{"true" if i == 0 else "false"}">{html.escape(p["label"])}</button>'
+        for i, p in enumerate(panels)
+    )
+    body = ""
+    for p in panels:
+        suffix = "" if p["key"] == "wk" else f"-{p['key']}"
+        body += (f'<div class="panel" id="p-{p["key"]}" role="tabpanel" aria-label="{html.escape(p["label"])}">'
+                 f'<h2 class="panel-h">{html.escape(p.get("heading", p["label"]))}</h2>'
+                 f'{_leaders_html(p.get("leaders"), p.get("leaders_title", ""))}'
+                 f'{_sections(p["entries"], week, embed, suffix)}</div>')
 
     miss = ""
     if missing:
@@ -180,23 +259,26 @@ def build_page(season: int, week: int, entries: list[dict], out_file: Path, *, e
                 f"The Wednesday run adds them.</p>")
     stamp = datetime.now(timezone.utc).strftime("%b %d, %Y")
     voice = "written by Claude from these numbers" if take_source == "claude" else "rule-based, from these numbers"
-    raw = "" if embed else ' Raw numbers: <a href="data.csv">data.csv</a>, <a href="takes.json">takes.json</a>.'
+    raw = "" if embed else ' Raw numbers: <a href="data.csv">data.csv</a>, <a href="data_l4.csv">data_l4.csv</a>, <a href="takes.json">takes.json</a>.'
     page = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f1218">
 <title>Week {week} Volumetrics, {season}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<script>document.documentElement.classList.add('js')</script>
 <style>{css}</style></head>
 <body><div class="wrap">
 <header class="top">
 <h1 class="banner">📊 Week {week} VOLUMETRICS 📊</h1>
 <p class="dek">Target share and snap % for every team, {season} season</p>
-{lead_html}
 </header>
-<nav aria-label="Jump to a team">{nav}</nav>
-<main>{''.join(sections)}</main>
+<div class="bar"><div class="tabs" role="tablist" aria-label="View">{tabs}</div>
+<nav aria-label="Jump to a team">{nav}</nav></div>
+<main>{body}</main>
 <footer>{miss}
+<p>"Last 4 games" adds up each team's four most recent games (bye weeks skipped), so the oldest game drops off
+each week. Shares there are totals over those games; a game a player missed counts as zero.</p>
 <p>Targets, red-zone targets and receiving lines from nflverse play-by-play. Snap counts from Pro Football Reference
 via nflverse. Drops from FTN Data via nflverse (CC-BY-SA 4.0). Red zone means inside the opponent's 20.
 Takes are {voice}.</p>

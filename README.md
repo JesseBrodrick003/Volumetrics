@@ -43,12 +43,23 @@ python run_weekly.py --teams CAR DAL --embed # a few teams + one self-contained 
 | File | What it is |
 |---|---|
 | `index.html` | top target shares, then every team: chart, the take, and "Why this take" with the numbers |
-| `img/<TEAM>-m.png` | 1080×1920 phone card (story-sized), what phones see; tap a card to open it |
-| `img/<TEAM>.webp`, `img/<TEAM>-m.webp` | the wide and phone cards the page loads (WebP, ~3x smaller) |
+| `img/<TEAM>-m.webp`, `img/<TEAM>.webp` | phone card (1080×1920) and wide card (1920×1080); tap a card to open it full size |
+| `img/l4/...` | the same two cards for the "Last 4" tab |
+| `data_l4.csv` | every number in the Last 4 tab, one row per player |
 | `report-standalone.html` | same page with images inlined, one file you can text or email |
 | `data.csv` | every number used, one row per player |
 | `takes.json` | each take plus the signals and evidence that produced it |
 | `manifest.json` | which teams were built, which were missing, when it ran |
+
+## The "Last 4" tab
+
+Each team's **four most recent games played** (bye weeks skipped), added together, so every week the
+oldest game drops off and the newest comes in. Shares are totals over those games (a player's targets ÷
+the team's targets across all four), so a game he missed counts as zero. Under each card, a small table
+shows the top five receivers' target share game by game, shaded by size, so you can see who's rising
+or fading. The takes there look for trends: who's owned the role every week, whose share is climbing or
+slipping between the first and last two games, snap shares growing, and who's getting the red-zone looks.
+Change the window with `--window` (e.g. `--window 3`).
 
 ## How the numbers are defined (`volumetrics/data.py`)
 

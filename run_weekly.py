@@ -32,7 +32,7 @@ from volumetrics import data as D
 from matplotlib.colors import to_hex
 
 from volumetrics.charts import FONT_DIR, LANDSCAPE, PORTRAIT, accent, render_team
-from volumetrics.insights import detect_signals, write_take
+from volumetrics.insights import detect_signals, detect_window_signals, write_take
 from volumetrics.narrator import narrate
 from volumetrics.report import build_index, build_page
 
@@ -55,6 +55,7 @@ def main(argv=None) -> int:
                     help="text in the top-right corner of every chart (your handle)")
     ap.add_argument("--no-llm", action="store_true", help="skip the Claude voice pass even if a key is set")
     ap.add_argument("--embed", action="store_true", help="also write report-standalone.html with everything inlined")
+    ap.add_argument("--window", type=int, default=4, help="games in the rolling tab (0 = no tab)")
     ap.add_argument("--skip-if-exists", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
@@ -95,11 +96,10 @@ def main(argv=None) -> int:
             log.warning("%s: no usable data, skipped", team)
             missing.append(team)
             continue
-        # Phone card (PNG kept so it can be saved/posted) + WebP copies the page actually loads
-        img_m = render_team(tw, out_dir / "img" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT)
-        land_png = render_team(tw, out_dir / "img" / f"{team}.png", brand=a.brand, layout=LANDSCAPE)
-        webp_m = _webp(img_m)
-        img = _webp(land_png, remove_png=True)
+        # Rendered as PNG, stored as WebP (~3x smaller, keeps the page fast and the repo lean)
+        webp_m = _webp(render_team(tw, out_dir / "img" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT), True)
+        img = _webp(render_team(tw, out_dir / "img" / f"{team}.png", brand=a.brand, layout=LANDSCAPE), True)
+        img_m = webp_m
         take = write_take(tw, detect_signals(tw))
         if use_llm:
             take = narrate(tw, take)
@@ -119,23 +119,68 @@ def main(argv=None) -> int:
         return 1
 
     entries.sort(key=lambda e: e["team_name"])  # same order as the reference: by city
-    source = "claude" if any(t["source"] == "claude" for t in takes.values()) else "template"
     color = {e["team"]: e["color"] for e in entries}
     leaders = [  # top target shares of the week (8+ targets), linked to each team
-        {"label": r["label"], "team": r["team"], "share": r["tgt_share"], "color": color[r["team"]]}
+        {"label": r["label"], "team": r["team"], "anchor": r["team"], "share": r["tgt_share"], "color": color[r["team"]]}
         for r in sorted((r for r in rows if r["targets"] >= 8), key=lambda r: -r["tgt_share"])[:5]
     ]
-    build_page(season, week, entries, out_dir / "index.html", missing=missing,
-               take_source=source, leaders=leaders)
-    if a.embed:
-        build_page(season, week, entries, out_dir / "report-standalone.html", embed=True,
-                   missing=missing, take_source=source, leaders=leaders)
+    panels = [{"key": "wk", "label": f"Week {week}", "heading": f"Week {week}", "entries": entries,
+               "leaders": leaders, "leaders_title": "Top target shares this week"}]
 
-    with open(out_dir / "data.csv", "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        w.writerows(rows)
-    (out_dir / "takes.json").write_text(json.dumps(takes, indent=2))
+    # ---- Rolling tab: every team's last N games played (bye teams included) ----
+    rows_l4, takes_l4 = [], {}
+    if a.window and a.window > 1:
+        entries_l4 = []
+        all_teams = sorted(set(D.load_season(season)["snaps"].filter(D.pl.col("week") <= week)["team"].to_list()))
+        wanted_l4 = [t for t in all_teams if not a.teams or t in wanted]
+        for team in wanted_l4:
+            w = D.build_team_window(season, week, team, n=a.window)
+            if w is None or w.n < 2 or w.total_targets == 0:
+                continue
+            webp_m = _webp(render_team(w, out_dir / "img" / "l4" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT), True)
+            img = _webp(render_team(w, out_dir / "img" / "l4" / f"{team}.png", brand=a.brand, layout=LANDSCAPE), True)
+            img_m = webp_m
+            take = write_take(w, detect_window_signals(w))
+            if use_llm:
+                take = narrate(w, take)
+            top5 = w.by_targets()[:5]
+            entries_l4.append({
+                "team": team, "team_name": w.team_name, "color": to_hex(accent(w.colors)),
+                "img_path": img, "img_rel": f"img/l4/{img.name}",
+                "img_path_m": img_m, "img_rel_m": f"img/l4/{webp_m.name}", "img_png_m": f"img/l4/{img_m.name}",
+                "take": take.text, "evidence": [s.evidence for s in take.signals],
+                "trend": {"weeks": w.weeks,
+                          "rows": [{"name": p.name, "shares": p.wk_share, "total": p.tgt_share} for p in top5]},
+            })
+            rows_l4.extend({**r, "window_weeks": "-".join(map(str, w.weeks))} for r in D.to_rows(w))
+            takes_l4[team] = {"team_name": w.team_name, "weeks": w.weeks, "take": take.text, "source": take.source,
+                              "signals": [{"key": s.key, "evidence": s.evidence} for s in take.signals]}
+            log.info("%-3s last-%d done (%s)", team, w.n, take.source)
+        entries_l4.sort(key=lambda e: e["team_name"])
+        color_l4 = {e["team"]: e["color"] for e in entries_l4}
+        leaders_l4 = [
+            {"label": r["label"], "team": r["team"], "anchor": f'{r["team"]}-l4', "share": r["tgt_share"],
+             "color": color_l4[r["team"]]}
+            for r in sorted((r for r in rows_l4 if r["targets"] >= 20), key=lambda r: -r["tgt_share"])[:5]
+        ]
+        if entries_l4:
+            panels.append({"key": "l4", "label": f"Last {a.window}", "heading": f"Last {a.window} games played",
+                           "entries": entries_l4, "leaders": leaders_l4,
+                           "leaders_title": f"Top target shares, last {a.window} games"})
+
+    source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"
+    build_page(season, week, panels, out_dir / "index.html", missing=missing, take_source=source)
+    if a.embed:
+        build_page(season, week, panels, out_dir / "report-standalone.html", embed=True,
+                   missing=missing, take_source=source)
+
+    for name, data in (("data.csv", rows), ("data_l4.csv", rows_l4)):
+        if data:
+            with open(out_dir / name, "w", newline="") as fh:
+                wr = csv.DictWriter(fh, fieldnames=list(data[0].keys()))
+                wr.writeheader()
+                wr.writerows(data)
+    (out_dir / "takes.json").write_text(json.dumps({"week": takes, f"last{a.window}": takes_l4}, indent=2))
 
     # fonts for the hosted pages
     assets = a.out / "assets" / "fonts"
