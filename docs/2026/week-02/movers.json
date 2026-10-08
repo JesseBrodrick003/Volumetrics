@@ -1,19 +1,6 @@
 {
   "risers": [
     {
-      "player": "Germie Bernard",
-      "team": "PIT",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.0,
-      "after": 0.2162,
-      "snap_before": 0.04,
-      "snap_after": 0.79,
-      "xfp_before": null,
-      "xfp_after": 11.79,
-      "tag": "Waiver add"
-    },
-    {
       "player": "Rashod Bateman",
       "team": "BAL",
       "pos": "WR",
@@ -24,6 +11,19 @@
       "snap_after": 0.93,
       "xfp_before": 2.21,
       "xfp_after": 16.04,
+      "tag": "Waiver add"
+    },
+    {
+      "player": "Germie Bernard",
+      "team": "PIT",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.0,
+      "after": 0.2162,
+      "snap_before": 0.04,
+      "snap_after": 0.79,
+      "xfp_before": null,
+      "xfp_after": 11.79,
       "tag": "Waiver add"
     },
     {
@@ -40,19 +40,6 @@
       "tag": "Waiver add"
     },
     {
-      "player": "Emanuel Wilson",
-      "team": "SEA",
-      "pos": "RB",
-      "metric": "Backfield share",
-      "before": 0.08,
-      "after": 0.5238,
-      "snap_before": 0.06,
-      "snap_after": 0.41,
-      "xfp_before": 0.75,
-      "xfp_after": 21.57,
-      "tag": "Waiver add"
-    },
-    {
       "player": "Terrance Ferguson",
       "team": "LA",
       "pos": "TE",
@@ -66,16 +53,55 @@
       "tag": "Waiver add"
     },
     {
-      "player": "Aaron Jones",
-      "team": "MIN",
+      "player": "Emanuel Wilson",
+      "team": "SEA",
       "pos": "RB",
       "metric": "Backfield share",
-      "before": 0.4483,
-      "after": 0.8519,
-      "snap_before": 0.46,
+      "before": 0.08,
+      "after": 0.5238,
+      "snap_before": 0.06,
+      "snap_after": 0.41,
+      "xfp_before": 0.75,
+      "xfp_after": 21.57,
+      "tag": "Waiver add"
+    },
+    {
+      "player": "Christian Watson",
+      "team": "GB",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.2,
+      "after": 0.3793,
+      "snap_before": 0.76,
+      "snap_after": 0.9,
+      "xfp_before": 16.57,
+      "xfp_after": 18.7,
+      "tag": "Buy"
+    },
+    {
+      "player": "Adonai Mitchell",
+      "team": "NYJ",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.1304,
+      "after": 0.3333,
+      "snap_before": 0.69,
+      "snap_after": 0.82,
+      "xfp_before": 5.48,
+      "xfp_after": 19.01,
+      "tag": "Buy"
+    },
+    {
+      "player": "Parker Washington",
+      "team": "JAX",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.2857,
+      "after": 0.4286,
+      "snap_before": 0.61,
       "snap_after": 0.81,
-      "xfp_before": 9.620000000000001,
-      "xfp_after": 10.15,
+      "xfp_before": 11.87,
+      "xfp_after": 19.13,
       "tag": "Buy"
     },
     {
@@ -105,45 +131,6 @@
       "tag": "Waiver add"
     },
     {
-      "player": "Adonai Mitchell",
-      "team": "NYJ",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.1304,
-      "after": 0.3333,
-      "snap_before": 0.69,
-      "snap_after": 0.82,
-      "xfp_before": 5.48,
-      "xfp_after": 19.01,
-      "tag": "Buy"
-    },
-    {
-      "player": "Christian Watson",
-      "team": "GB",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.2,
-      "after": 0.3793,
-      "snap_before": 0.76,
-      "snap_after": 0.9,
-      "xfp_before": 16.57,
-      "xfp_after": 18.7,
-      "tag": "Buy"
-    },
-    {
-      "player": "Parker Washington",
-      "team": "JAX",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.2857,
-      "after": 0.4286,
-      "snap_before": 0.61,
-      "snap_after": 0.81,
-      "xfp_before": 11.87,
-      "xfp_after": 19.13,
-      "tag": "Buy"
-    },
-    {
       "player": "Brian Thomas Jr.",
       "team": "JAX",
       "pos": "WR",
@@ -157,17 +144,30 @@
       "tag": "Buy"
     },
     {
-      "player": "Isaiah Williams",
-      "team": "NYJ",
+      "player": "Jared Wayne",
+      "team": "HOU",
       "pos": "WR",
       "metric": "Target share",
-      "before": 0.0435,
-      "after": 0.1667,
-      "snap_before": 0.6,
-      "snap_after": 0.82,
-      "xfp_before": 1.5,
-      "xfp_after": 9.129999999999999,
+      "before": 0.027,
+      "after": 0.14,
+      "snap_before": 0.32,
+      "snap_after": 0.5,
+      "xfp_before": 2.25,
+      "xfp_after": 14.13,
       "tag": "Waiver add"
+    },
+    {
+      "player": "Will Shipley",
+      "team": "PHI",
+      "pos": "RB",
+      "metric": "Backfield share",
+      "before": 0.1429,
+      "after": 0.3,
+      "snap_before": 0.18,
+      "snap_after": 0.51,
+      "xfp_before": 2.49,
+      "xfp_after": 6.48,
+      "tag": "Watch"
     },
     {
       "player": "Austin Hooper",
@@ -196,17 +196,30 @@
       "tag": "Waiver add"
     },
     {
-      "player": "Will Shipley",
-      "team": "PHI",
+      "player": "Aaron Jones",
+      "team": "MIN",
       "pos": "RB",
       "metric": "Backfield share",
-      "before": 0.1429,
-      "after": 0.3,
-      "snap_before": 0.18,
-      "snap_after": 0.51,
-      "xfp_before": 2.49,
-      "xfp_after": 6.48,
+      "before": 0.4483,
+      "after": 0.8519,
+      "snap_before": 0.46,
+      "snap_after": 0.81,
+      "xfp_before": 9.620000000000001,
+      "xfp_after": 10.15,
       "tag": "Watch"
+    },
+    {
+      "player": "Kenneth Walker III",
+      "team": "KC",
+      "pos": "RB",
+      "metric": "Backfield share",
+      "before": 0.7436,
+      "after": 0.8947,
+      "snap_before": 0.68,
+      "snap_after": 0.82,
+      "xfp_before": 26.15,
+      "xfp_after": 36.31,
+      "tag": "Buy"
     },
     {
       "player": "Brian Robinson",
@@ -222,19 +235,6 @@
       "tag": "Waiver add"
     },
     {
-      "player": "Blake Corum",
-      "team": "LA",
-      "pos": "RB",
-      "metric": "Backfield share",
-      "before": 0.3333,
-      "after": 0.4815,
-      "snap_before": 0.23,
-      "snap_after": 0.45,
-      "xfp_before": 4.78,
-      "xfp_after": 7.7,
-      "tag": "Buy"
-    },
-    {
       "player": "Woody Marks",
       "team": "HOU",
       "pos": "RB",
@@ -245,19 +245,6 @@
       "snap_after": 0.48,
       "xfp_before": 5.72,
       "xfp_after": 13.58,
-      "tag": "Buy"
-    },
-    {
-      "player": "Harold Fannin Jr.",
-      "team": "CLE",
-      "pos": "TE",
-      "metric": "Target share",
-      "before": 0.1364,
-      "after": 0.2,
-      "snap_before": 0.82,
-      "snap_after": 0.86,
-      "xfp_before": 3.03,
-      "xfp_after": 8.35,
       "tag": "Buy"
     },
     {
@@ -287,6 +274,19 @@
       "tag": "Buy"
     },
     {
+      "player": "Harold Fannin Jr.",
+      "team": "CLE",
+      "pos": "TE",
+      "metric": "Target share",
+      "before": 0.1364,
+      "after": 0.2,
+      "snap_before": 0.82,
+      "snap_after": 0.86,
+      "xfp_before": 3.03,
+      "xfp_after": 8.35,
+      "tag": "Watch"
+    },
+    {
       "player": "Tyler Warren",
       "team": "IND",
       "pos": "TE",
@@ -310,7 +310,7 @@
       "snap_after": 0.28,
       "xfp_before": 1.54,
       "xfp_after": 8.03,
-      "tag": "Waiver add"
+      "tag": "Watch"
     }
   ],
   "fallers": [
@@ -367,16 +367,16 @@
       "tag": "Sell"
     },
     {
-      "player": "Jayden Reed",
-      "team": "GB",
+      "player": "Wan'Dale Robinson",
+      "team": "TEN",
       "pos": "WR",
       "metric": "Target share",
-      "before": 0.175,
-      "after": 0.0345,
-      "snap_before": 0.57,
-      "snap_after": 0.03,
-      "xfp_before": 11.4,
-      "xfp_after": 1.28,
+      "before": 0.2143,
+      "after": 0.0588,
+      "snap_before": 0.82,
+      "snap_after": 0.53,
+      "xfp_before": 8.27,
+      "xfp_after": 1.3,
       "tag": "Sell"
     },
     {
@@ -393,43 +393,17 @@
       "tag": "Sell"
     },
     {
-      "player": "Wan'Dale Robinson",
-      "team": "TEN",
+      "player": "Jayden Reed",
+      "team": "GB",
       "pos": "WR",
       "metric": "Target share",
-      "before": 0.2143,
-      "after": 0.0588,
-      "snap_before": 0.82,
-      "snap_after": 0.53,
-      "xfp_before": 8.27,
-      "xfp_after": 1.3,
-      "tag": "Sell"
-    },
-    {
-      "player": "David Njoku",
-      "team": "LAC",
-      "pos": "TE",
-      "metric": "Target share",
-      "before": 0.1852,
-      "after": 0.1154,
-      "snap_before": 0.55,
-      "snap_after": 0.16,
-      "xfp_before": 8.29,
-      "xfp_after": 3.8,
-      "tag": "Sell"
-    },
-    {
-      "player": "Mike Gesicki",
-      "team": "CIN",
-      "pos": "TE",
-      "metric": "Target share",
-      "before": 0.2059,
-      "after": 0.0,
-      "snap_before": 0.33,
-      "snap_after": 0.35,
-      "xfp_before": 15.77,
-      "xfp_after": null,
-      "tag": "Buy low"
+      "before": 0.175,
+      "after": 0.0345,
+      "snap_before": 0.57,
+      "snap_after": 0.03,
+      "xfp_before": 11.4,
+      "xfp_after": 1.28,
+      "tag": "Watch"
     },
     {
       "player": "Mason Taylor",
@@ -455,7 +429,7 @@
       "snap_after": 0.52,
       "xfp_before": 7.74,
       "xfp_after": 1.99,
-      "tag": "Watch"
+      "tag": "Sell"
     },
     {
       "player": "DeMario Douglas",
@@ -468,71 +442,6 @@
       "snap_after": 0.47,
       "xfp_before": 9.92,
       "xfp_after": 2.87,
-      "tag": "Sell"
-    },
-    {
-      "player": "Stefon Diggs",
-      "team": "WAS",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.3103,
-      "after": 0.1765,
-      "snap_before": 0.63,
-      "snap_after": 0.51,
-      "xfp_before": 14.2,
-      "xfp_after": 12.76,
-      "tag": "Watch"
-    },
-    {
-      "player": "Kalif Raymond",
-      "team": "CHI",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.3462,
-      "after": 0.1667,
-      "snap_before": 0.6,
-      "snap_after": 0.62,
-      "xfp_before": 13.75,
-      "xfp_after": 8.56,
-      "tag": "Buy low"
-    },
-    {
-      "player": "MarShawn Lloyd",
-      "team": "GB",
-      "pos": "RB",
-      "metric": "Backfield share",
-      "before": 0.6364,
-      "after": 0.3636,
-      "snap_before": 0.44,
-      "snap_after": 0.27,
-      "xfp_before": 9.1,
-      "xfp_after": 7.4399999999999995,
-      "tag": "Sell"
-    },
-    {
-      "player": "Pat Bryant",
-      "team": "DEN",
-      "pos": "WR",
-      "metric": "Target share",
-      "before": 0.2222,
-      "after": 0.0345,
-      "snap_before": 0.59,
-      "snap_after": 0.66,
-      "xfp_before": 8.77,
-      "xfp_after": 1.62,
-      "tag": "Buy low"
-    },
-    {
-      "player": "George Holani",
-      "team": "SEA",
-      "pos": "RB",
-      "metric": "Backfield share",
-      "before": 0.36,
-      "after": 0.119,
-      "snap_before": 0.46,
-      "snap_after": 0.26,
-      "xfp_before": 6.37,
-      "xfp_after": 8.219999999999999,
       "tag": "Sell"
     },
     {
@@ -549,17 +458,95 @@
       "tag": "Sell"
     },
     {
-      "player": "Noah Fant",
-      "team": "NO",
+      "player": "David Njoku",
+      "team": "LAC",
       "pos": "TE",
       "metric": "Target share",
-      "before": 0.1538,
+      "before": 0.1852,
+      "after": 0.1154,
+      "snap_before": 0.55,
+      "snap_after": 0.16,
+      "xfp_before": 8.29,
+      "xfp_after": 3.8,
+      "tag": "Watch"
+    },
+    {
+      "player": "Mike Gesicki",
+      "team": "CIN",
+      "pos": "TE",
+      "metric": "Target share",
+      "before": 0.2059,
       "after": 0.0,
-      "snap_before": 0.41,
-      "snap_after": 0.44,
-      "xfp_before": 14.07,
+      "snap_before": 0.33,
+      "snap_after": 0.35,
+      "xfp_before": 15.77,
       "xfp_after": null,
-      "tag": "Buy low"
+      "tag": "Watch"
+    },
+    {
+      "player": "Jerry Jeudy",
+      "team": "CLE",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.1818,
+      "after": 0.0333,
+      "snap_before": 0.63,
+      "snap_after": 0.59,
+      "xfp_before": 5.67,
+      "xfp_after": 1.47,
+      "tag": "Sell"
+    },
+    {
+      "player": "Caleb Douglas",
+      "team": "MIA",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.2593,
+      "after": 0.1304,
+      "snap_before": 0.91,
+      "snap_after": 0.86,
+      "xfp_before": 11.54,
+      "xfp_after": 3.95,
+      "tag": "Sell"
+    },
+    {
+      "player": "MarShawn Lloyd",
+      "team": "GB",
+      "pos": "RB",
+      "metric": "Backfield share",
+      "before": 0.6364,
+      "after": 0.3636,
+      "snap_before": 0.44,
+      "snap_after": 0.27,
+      "xfp_before": 9.1,
+      "xfp_after": 7.4399999999999995,
+      "tag": "Watch"
+    },
+    {
+      "player": "George Holani",
+      "team": "SEA",
+      "pos": "RB",
+      "metric": "Backfield share",
+      "before": 0.36,
+      "after": 0.119,
+      "snap_before": 0.46,
+      "snap_after": 0.26,
+      "xfp_before": 6.37,
+      "xfp_after": 8.219999999999999,
+      "tag": "Watch"
+    },
+    {
+      "player": "Pat Bryant",
+      "team": "DEN",
+      "pos": "WR",
+      "metric": "Target share",
+      "before": 0.2222,
+      "after": 0.0345,
+      "snap_before": 0.59,
+      "snap_after": 0.66,
+      "xfp_before": 8.77,
+      "xfp_after": 1.62,
+      "tag": "Watch"
     },
     {
       "player": "Josh Oliver",
@@ -572,20 +559,33 @@
       "snap_after": 0.6,
       "xfp_before": 5.71,
       "xfp_after": 1.53,
-      "tag": "Buy low"
+      "tag": "Watch"
     },
     {
-      "player": "David Montgomery",
-      "team": "HOU",
+      "player": "Noah Fant",
+      "team": "NO",
+      "pos": "TE",
+      "metric": "Target share",
+      "before": 0.1538,
+      "after": 0.0,
+      "snap_before": 0.41,
+      "snap_after": 0.44,
+      "xfp_before": 14.07,
+      "xfp_after": null,
+      "tag": "Watch"
+    },
+    {
+      "player": "Jacory Croskey-Merritt",
+      "team": "WAS",
       "pos": "RB",
       "metric": "Backfield share",
-      "before": 0.697,
-      "after": 0.3636,
+      "before": 0.5667,
+      "after": 0.4194,
       "snap_before": 0.49,
-      "snap_after": 0.52,
-      "xfp_before": 23.01,
-      "xfp_after": 5.75,
-      "tag": "Buy low"
+      "snap_after": 0.37,
+      "xfp_before": 11.0,
+      "xfp_after": 7.24,
+      "tag": "Sell"
     },
     {
       "player": "Emmett Johnson",
@@ -598,20 +598,20 @@
       "snap_after": 0.18,
       "xfp_before": 6.35,
       "xfp_after": 4.07,
-      "tag": "Sell"
+      "tag": "Watch"
     },
     {
-      "player": "Kaelon Black",
-      "team": "SF",
+      "player": "David Montgomery",
+      "team": "HOU",
       "pos": "RB",
       "metric": "Backfield share",
-      "before": 0.4545,
-      "after": 0.2593,
-      "snap_before": 0.43,
-      "snap_after": 0.33,
-      "xfp_before": 7.63,
-      "xfp_after": 4.29,
-      "tag": "Buy low"
+      "before": 0.697,
+      "after": 0.3636,
+      "snap_before": 0.49,
+      "snap_after": 0.52,
+      "xfp_before": 23.01,
+      "xfp_after": 5.75,
+      "tag": "Watch"
     },
     {
       "player": "Michael Mayer",
@@ -624,7 +624,7 @@
       "snap_after": 0.84,
       "xfp_before": 12.94,
       "xfp_after": 6.22,
-      "tag": "Buy low"
+      "tag": "Watch"
     }
   ]
 }
