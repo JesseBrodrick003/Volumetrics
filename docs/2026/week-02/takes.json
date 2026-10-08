@@ -1138,5 +1138,404 @@
         2
       ]
     }
+  },
+  "rb": {
+    "ARI": {
+      "team_name": "Arizona Cardinals",
+      "take": "This is a committee: J Love 56% of the carries, T Allgeier 31%. J Love has the passing-down edge with 3 targets to 2. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "J Love 56% / T Allgeier 31% of carries"
+        }
+      ]
+    },
+    "ATL": {
+      "team_name": "Atlanta Falcons",
+      "take": "This is a committee: B Robinson 57% of the carries, B Robinson 39%. B Robinson has the passing-down edge with 4 targets to 2. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "B Robinson 57% / B Robinson 39% of carries"
+        }
+      ]
+    },
+    "BAL": {
+      "team_name": "Baltimore Ravens",
+      "take": "D Henry is the lead back (16 carries, 89%) but not a workhorse: he played 53% of the snaps.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "D Henry: 89% rush share, 53% snaps"
+        }
+      ]
+    },
+    "BUF": {
+      "team_name": "Buffalo Bills",
+      "take": "No committee here. J Cook played 74% of the snaps and took 21 of 28 carries. J Cook also got 2 of the team's 3 carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "J Cook: 74% snaps, 75% rush share"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "J Cook: 2 of 3 carries inside the 5"
+        }
+      ]
+    },
+    "CAR": {
+      "team_name": "Carolina Panthers",
+      "take": "C Hubbard is the lead back (12 carries, 60%) but not a workhorse: he played 65% of the snaps and J Brooks still got 5 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "C Hubbard: 60% rush share, 65% snaps"
+        }
+      ]
+    },
+    "CHI": {
+      "team_name": "Chicago Bears",
+      "take": "This is a committee: D Swift 57% of the carries, K Monangai 36%. D Swift has the passing-down edge with 5 targets to 2. Hard to trust either as more than a flex. D Swift had 6 high-value touches (catches plus carries inside the 10). Those are the touches that score fantasy points.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "D Swift 57% / K Monangai 36% of carries"
+        },
+        {
+          "key": "hvt",
+          "evidence": "D Swift: 6 high-value touches"
+        }
+      ]
+    },
+    "CLE": {
+      "team_name": "Cleveland Browns",
+      "take": "Q Judkins is the lead back (12 carries, 67%) but not a workhorse: he played 67% of the snaps.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "Q Judkins: 67% rush share, 67% snaps"
+        }
+      ]
+    },
+    "DAL": {
+      "team_name": "Dallas Cowboys",
+      "take": "No committee here. J Williams played 80% of the snaps and took 12 of 18 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "J Williams: 80% snaps, 67% rush share"
+        }
+      ]
+    },
+    "DEN": {
+      "team_name": "Denver Broncos",
+      "take": "This is a committee: J Coleman 40% of the carries, J Dobbins 40%. J Coleman has the passing-down edge with 3 targets to 0. Hard to trust either as more than a flex. J Dobbins also got 3 of the team's 4 carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "J Coleman 40% / J Dobbins 40% of carries"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "J Dobbins: 3 of 4 carries inside the 5"
+        }
+      ]
+    },
+    "DET": {
+      "team_name": "Detroit Lions",
+      "take": "No committee here. J Gibbs played 83% of the snaps and took 16 of 18 carries. J Gibbs had 7 high-value touches (catches plus carries inside the 10). Those are the touches that score fantasy points.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "J Gibbs: 83% snaps, 89% rush share"
+        },
+        {
+          "key": "hvt",
+          "evidence": "J Gibbs: 7 high-value touches"
+        }
+      ]
+    },
+    "GB": {
+      "team_name": "Green Bay Packers",
+      "take": "This is a committee: K Johnson 44% of the carries, M Lloyd 33%. M Lloyd has the passing-down edge with 2 targets to 0. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "K Johnson 44% / M Lloyd 33% of carries"
+        }
+      ]
+    },
+    "HOU": {
+      "team_name": "Houston Texans",
+      "take": "This is a committee: W Marks 53% of the carries, D Montgomery 40%. W Marks has the passing-down edge with 6 targets to 2. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "W Marks 53% / D Montgomery 40% of carries"
+        }
+      ]
+    },
+    "IND": {
+      "team_name": "Indianapolis Colts",
+      "take": "No committee here. J Taylor played 94% of the snaps and took 24 of 30 carries. J Taylor also got both of the team's carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "J Taylor: 94% snaps, 80% rush share"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "J Taylor: 2 of 2 carries inside the 5"
+        }
+      ]
+    },
+    "JAX": {
+      "team_name": "Jacksonville Jaguars",
+      "take": "B Tuten is the lead back (13 carries, 54%) but not a workhorse: he played 51% of the snaps and C Rodriguez still got 6 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "B Tuten: 54% rush share, 51% snaps"
+        }
+      ]
+    },
+    "KC": {
+      "team_name": "Kansas City Chiefs",
+      "take": "K Walker is a true workhorse: 82% of the snaps and 89% of the carries (24). K Walker also got all 3 of the team's carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "K Walker: 82% snaps, 89% rush share"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "K Walker: 3 of 3 carries inside the 5"
+        }
+      ]
+    },
+    "LA": {
+      "team_name": "Los Angeles Rams",
+      "take": "This is a committee: K Williams 50% of the carries, B Corum 50%. K Williams has the passing-down edge with 2 targets to 1. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "K Williams 50% / B Corum 50% of carries"
+        }
+      ]
+    },
+    "LAC": {
+      "team_name": "Los Angeles Chargers",
+      "take": "O Hampton is the lead back (23 carries, 74%) but not a workhorse: he played 63% of the snaps and K Mitchell still got 5 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "O Hampton: 74% rush share, 63% snaps"
+        }
+      ]
+    },
+    "LV": {
+      "team_name": "Las Vegas Raiders",
+      "take": "A Jeanty is a true workhorse: 81% of the snaps and 84% of the carries (21). A Jeanty also got all 4 of the team's carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "A Jeanty: 81% snaps, 84% rush share"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "A Jeanty: 4 of 4 carries inside the 5"
+        }
+      ]
+    },
+    "MIA": {
+      "team_name": "Miami Dolphins",
+      "take": "No committee here. D Achane played 76% of the snaps and took 20 of 28 carries. D Herman is the passing-down back: 3 targets (13% of the team's) on 29% of the snaps. That's real value in PPR. D Achane had 6 high-value touches (catches plus carries inside the 10). Those are the touches that score fantasy points.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "D Achane: 76% snaps, 71% rush share"
+        },
+        {
+          "key": "pass_back",
+          "evidence": "D Herman: 13% target share, 0% rush share"
+        },
+        {
+          "key": "hvt",
+          "evidence": "D Achane: 6 high-value touches"
+        }
+      ]
+    },
+    "MIN": {
+      "team_name": "Minnesota Vikings",
+      "take": "No committee here. A Jones played 81% of the snaps and took 23 of 27 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "A Jones: 81% snaps, 85% rush share"
+        }
+      ]
+    },
+    "NE": {
+      "team_name": "New England Patriots",
+      "take": "T Henderson is the lead back (16 carries, 67%) but not a workhorse: he played 60% of the snaps and R Stevenson still got 6 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "T Henderson: 67% rush share, 60% snaps"
+        }
+      ]
+    },
+    "NO": {
+      "team_name": "New Orleans Saints",
+      "take": "This is a committee: A Kamara 38% of the carries, T Etienne 33%. A Kamara has the passing-down edge with 6 targets to 2. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "A Kamara 38% / T Etienne 33% of carries"
+        }
+      ]
+    },
+    "NYG": {
+      "team_name": "New York Giants",
+      "take": "C Skattebo is the lead back (12 carries, 57%) but not a workhorse: he played 59% of the snaps and N Harris still got 4 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "C Skattebo: 57% rush share, 59% snaps"
+        }
+      ]
+    },
+    "NYJ": {
+      "team_name": "New York Jets",
+      "take": "B Hall is the lead back (16 carries, 70%) but not a workhorse: he played 65% of the snaps and B Allen still got 5 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "B Hall: 70% rush share, 65% snaps"
+        }
+      ]
+    },
+    "PHI": {
+      "team_name": "Philadelphia Eagles",
+      "take": "T Bigsby led the backfield with 13 carries (43%), with W Shipley next at 7 (23%).",
+      "source": "template",
+      "signals": [
+        {
+          "key": "leaders",
+          "evidence": "top two by carries"
+        }
+      ]
+    },
+    "PIT": {
+      "team_name": "Pittsburgh Steelers",
+      "take": "This is a committee: J Warren 52% of the carries, R Dowdle 33%. J Warren has the passing-down edge with 4 targets to 2. Hard to trust either as more than a flex.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "J Warren 52% / R Dowdle 33% of carries"
+        }
+      ]
+    },
+    "SEA": {
+      "team_name": "Seattle Seahawks",
+      "take": "This is a committee: E Wilson 52% of the carries, J Price 32%. J Price has the passing-down edge with 2 targets to 1. Hard to trust either as more than a flex. E Wilson also got 4 of the team's 8 carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "E Wilson 52% / J Price 32% of carries"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "E Wilson: 4 of 8 carries inside the 5"
+        }
+      ]
+    },
+    "SF": {
+      "team_name": "San Francisco 49ers",
+      "take": "This is a committee: C McCaffrey 45% of the carries, K Black 32%. C McCaffrey has the passing-down edge with 4 targets to 0. Hard to trust either as more than a flex. C McCaffrey also got all 4 of the team's carries inside the 5. That's the touchdown role.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "committee",
+          "evidence": "C McCaffrey 45% / K Black 32% of carries"
+        },
+        {
+          "key": "goal_line",
+          "evidence": "C McCaffrey: 4 of 4 carries inside the 5"
+        }
+      ]
+    },
+    "TB": {
+      "team_name": "Tampa Bay Buccaneers",
+      "take": "B Irving is a true workhorse: 78% of the snaps and 77% of the carries (17). K Gainwell is the passing-down back: 4 targets (12% of the team's) on 35% of the snaps. That's real value in PPR.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "workhorse",
+          "evidence": "B Irving: 78% snaps, 77% rush share"
+        },
+        {
+          "key": "pass_back",
+          "evidence": "K Gainwell: 12% target share, 9% rush share"
+        }
+      ]
+    },
+    "TEN": {
+      "team_name": "Tennessee Titans",
+      "take": "T Pollard is the lead back (14 carries, 52%) but not a workhorse: he played 55% of the snaps and T Spears still got 7 carries.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "lead_back",
+          "evidence": "T Pollard: 52% rush share, 55% snaps"
+        }
+      ]
+    },
+    "WAS": {
+      "team_name": "Washington Commanders",
+      "take": "J Croskey-Merritt led the backfield with 12 carries (48%), with R White next at 7 (28%). R White is the passing-down back: 6 targets (18% of the team's) on 52% of the snaps. That's real value in PPR. R White had 8 high-value touches (catches plus carries inside the 10). Those are the touches that score fantasy points.",
+      "source": "template",
+      "signals": [
+        {
+          "key": "leaders",
+          "evidence": "top two by carries"
+        },
+        {
+          "key": "pass_back",
+          "evidence": "R White: 18% target share, 28% rush share"
+        },
+        {
+          "key": "hvt",
+          "evidence": "R White: 8 high-value touches"
+        }
+      ]
+    }
   }
 }
