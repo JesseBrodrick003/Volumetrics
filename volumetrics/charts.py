@@ -149,9 +149,23 @@ _SESSION = requests.Session()
 _SESSION.headers.update({"User-Agent": "Mozilla/5.0 (volumetrics)", "Accept": "image/png,image/*;q=0.8"})
 
 
+_MEM: dict[str, Image.Image] = {}  # in-process cache: each photo is used up to 8 times per team
+
+
 def fetch_image(url: str | None) -> Image.Image | None:
     if not url or url in _FAILED:
         return None
+    if url in _MEM:
+        return _MEM[url]
+    img = _fetch_image(url)
+    if img is None:
+        _FAILED.add(url)  # remember the original URL too, so it's never retried this run
+    else:
+        _MEM[url] = img
+    return img
+
+
+def _fetch_image(url: str) -> Image.Image | None:
     # NFL headshots are Cloudinary URLs with f_auto (format chosen per browser); ask for PNG
     url = url.replace("/f_auto,", "/f_png,")
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -178,8 +192,18 @@ def _font(size: int, weight="SemiBold"):
     return ImageFont.truetype(str(f), size) if f.exists() else ImageFont.load_default()
 
 
+_AVATARS: dict[tuple, np.ndarray] = {}
+
+
 def avatar(player: PlayerLine, fill, px: int = 256) -> np.ndarray:
     """Round headshot on a white disk; falls back to initials on the player's color."""
+    key = (player.headshot, player.headshot_alt, player.full_name, tuple(round(c, 3) for c in fill[:3]), px)
+    if key not in _AVATARS:
+        _AVATARS[key] = _avatar(player, fill, px)
+    return _AVATARS[key]
+
+
+def _avatar(player: PlayerLine, fill, px: int = 256) -> np.ndarray:
     ss = px * 2  # supersample for clean edges
     canvas = Image.new("RGBA", (ss, ss), (0, 0, 0, 0))
     mask = Image.new("L", (ss, ss), 0)

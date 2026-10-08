@@ -166,9 +166,10 @@ def main(argv=None) -> int:
             for r in sorted((r for r in rows_l4 if r["targets"] >= 20), key=lambda r: -r["tgt_share"])[:5]
         ]
         if entries_l4:
-            panels.append({"key": "l4", "label": f"Last {a.window}", "heading": f"Last {a.window} games played",
+            n = max(len(t["weeks"]) for t in takes_l4.values())  # early season: fewer than a.window games exist
+            panels.append({"key": "l4", "label": f"Last {n}", "heading": f"Last {n} games played",
                            "entries": entries_l4, "leaders": leaders_l4,
-                           "leaders_title": f"Top target shares, last {a.window} games"})
+                           "leaders_title": f"Top target shares, last {n} games"})
 
     source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"
     build_page(season, week, panels, out_dir / "index.html", missing=missing, take_source=source)
