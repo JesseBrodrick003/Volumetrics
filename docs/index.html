@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Volumetrics</title>
+<style>
+@font-face{font-family:Jost;src:url(assets/fonts/Jost-Regular.ttf) format("truetype");font-weight:400}
+@font-face{font-family:Jost;src:url(assets/fonts/Jost-Medium.ttf) format("truetype");font-weight:500}
+:root{--bg:#0b0e13;--ink:#eef0f4;--muted:#8b93a1;--line:#1e232c;--banner:#f6c945;--banner-ink:#1a1405}
+*{box-sizing:border-box}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:calc(64px + env(safe-area-inset-top,0px))}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 Jost,"Futura","Avenir Next",system-ui,sans-serif;
+     -webkit-font-smoothing:antialiased}
+.wrap{max-width:980px;margin:0 auto;padding:0 16px 64px}
+.banner{margin:20px 0 6px;background:var(--banner);color:var(--banner-ink);border-radius:8px;
+        font-weight:500;font-size:clamp(24px,5vw,38px);line-height:1.15;text-align:center;padding:12px 16px}
+.dek{color:var(--muted);text-align:center;margin:0 0 18px;font-size:15px}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:rgba(11,14,19,.92);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);margin:0 -16px;padding:10px 16px;overflow-x:auto;white-space:nowrap}
+nav a{display:inline-block;color:var(--muted);text-decoration:none;font-weight:500;font-size:14px;
+      padding:4px 8px;border-radius:6px}
+nav a:hover,nav a:focus-visible{color:var(--ink);background:#1a1f28;outline:none}
+section{padding:28px 0 8px;border-bottom:1px solid var(--line)}
+section img{display:block;width:100%;height:auto;border-radius:10px}
+section a.zoom{display:block;border-radius:10px}
+section a.zoom:focus-visible{outline:2px solid var(--banner);outline-offset:3px}
+.take{margin:16px 2px 0;max-width:68ch;font-size:18px}
+details{margin:10px 2px 0;color:var(--muted);font-size:14px}
+summary{cursor:pointer;width:max-content}
+summary:focus-visible{outline:2px solid var(--banner);outline-offset:3px;border-radius:4px}
+details ul{margin:8px 0 0;padding-left:18px}
+footer{color:var(--muted);font-size:13px;margin-top:28px;line-height:1.6}
+footer a{color:var(--muted)}
+ li{margin:8px 0} li a{color:var(--ink)}</style></head>
+<body><div class="wrap"><h1 class="banner">📊 VOLUMETRICS 📊</h1>
+<p class="dek"><a style="color:inherit" href="2026/week-04/index.html">Open the latest week</a></p>
+<ul><li><a href="2026/week-04/index.html">2026 · Week 4</a></li></ul></div></body></html>
