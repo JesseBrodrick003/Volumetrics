@@ -31,7 +31,7 @@ from pathlib import Path
 from volumetrics import data as D
 from matplotlib.colors import to_hex
 
-from volumetrics.charts import FONT_DIR, LANDSCAPE, PORTRAIT, accent, render_team
+from volumetrics.charts import FONT_DIR, accent, render_cards
 from volumetrics.insights import detect_signals, detect_window_signals, write_take
 from volumetrics.narrator import narrate
 from volumetrics.report import build_index, build_page
@@ -92,29 +92,17 @@ def main(argv=None) -> int:
         shutil.rmtree(out_dir / "img")  # full rebuild: clear old cards so stale files don't pile up
     use_llm = bool(os.getenv("ANTHROPIC_API_KEY")) and not a.no_llm
     entries, rows, takes = [], [], {}
-    for team in todo:
-        tw = D.build_team_week(season, week, team)
-        if tw is None or tw.total_targets == 0:
+    D.load_season(season)  # load once here; forked workers inherit it instead of re-downloading
+    jobs = [("wk", season, week, t, out_dir, a.brand, use_llm, 1) for t in todo]
+    for team, res in zip(todo, _run_parallel(jobs)):
+        if res is None:
             log.warning("%s: no usable data, skipped", team)
             missing.append(team)
             continue
-        # Rendered as PNG, stored as WebP (~3x smaller, keeps the page fast and the repo lean)
-        webp_m = _webp(render_team(tw, out_dir / "img" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT), True)
-        img = _webp(render_team(tw, out_dir / "img" / f"{team}.png", brand=a.brand, layout=LANDSCAPE), True)
-        img_m = webp_m
-        take = write_take(tw, detect_signals(tw))
-        if use_llm:
-            take = narrate(tw, take)
-        entries.append({
-            "team": team, "team_name": tw.team_name, "color": to_hex(accent(tw.colors)),
-            "img_path": img, "img_rel": f"img/{img.name}",
-            "img_path_m": img_m, "img_rel_m": f"img/{webp_m.name}", "img_png_m": f"img/{img_m.name}",
-            "take": take.text, "evidence": [s.evidence for s in take.signals],
-        })
-        rows.extend(D.to_rows(tw))
-        takes[team] = {"team_name": tw.team_name, "take": take.text, "source": take.source,
-                       "signals": [{"key": s.key, "evidence": s.evidence} for s in take.signals]}
-        log.info("%-3s done (%s)", team, take.source)
+        entries.append(res["entry"])
+        rows.extend(res["rows"])
+        takes[team] = res["take"]
+        log.info("%-3s done (%s)", team, res["take"]["source"])
 
     if not entries:
         log.error("Nothing rendered.")
@@ -135,29 +123,14 @@ def main(argv=None) -> int:
         entries_l4 = []
         all_teams = sorted(set(D.load_season(season)["snaps"].filter(D.pl.col("week") <= week)["team"].to_list()))
         wanted_l4 = [t for t in all_teams if not a.teams or t in wanted]
-        for team in wanted_l4:
-            w = D.build_team_window(season, week, team, n=a.window)
-            if w is None or w.n < 2 or w.total_targets == 0:
+        jobs = [("l4", season, week, t, out_dir, a.brand, use_llm, a.window) for t in wanted_l4]
+        for team, res in zip(wanted_l4, _run_parallel(jobs)):
+            if res is None:
                 continue
-            webp_m = _webp(render_team(w, out_dir / "img" / "l4" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT), True)
-            img = _webp(render_team(w, out_dir / "img" / "l4" / f"{team}.png", brand=a.brand, layout=LANDSCAPE), True)
-            img_m = webp_m
-            take = write_take(w, detect_window_signals(w))
-            if use_llm:
-                take = narrate(w, take)
-            top5 = w.by_targets()[:5]
-            entries_l4.append({
-                "team": team, "team_name": w.team_name, "color": to_hex(accent(w.colors)),
-                "img_path": img, "img_rel": f"img/l4/{img.name}",
-                "img_path_m": img_m, "img_rel_m": f"img/l4/{webp_m.name}", "img_png_m": f"img/l4/{img_m.name}",
-                "take": take.text, "evidence": [s.evidence for s in take.signals],
-                "trend": {"weeks": w.weeks,
-                          "rows": [{"name": p.name, "shares": p.wk_share, "total": p.tgt_share} for p in top5]},
-            })
-            rows_l4.extend({**r, "window_weeks": "-".join(map(str, w.weeks))} for r in D.to_rows(w))
-            takes_l4[team] = {"team_name": w.team_name, "weeks": w.weeks, "take": take.text, "source": take.source,
-                              "signals": [{"key": s.key, "evidence": s.evidence} for s in take.signals]}
-            log.info("%-3s last-%d done (%s)", team, w.n, take.source)
+            entries_l4.append(res["entry"])
+            rows_l4.extend(res["rows"])
+            takes_l4[team] = res["take"]
+            log.info("%-3s last-%d done (%s)", team, len(res["take"]["weeks"]), res["take"]["source"])
         entries_l4.sort(key=lambda e: e["team_name"])
         color_l4 = {e["team"]: e["color"] for e in entries_l4}
         leaders_l4 = [
@@ -202,6 +175,51 @@ def main(argv=None) -> int:
     _gh_output(built="true", season=season, week=week, complete=str(complete).lower(),
                teams=len(entries), missing=" ".join(missing), path=f"{season}/week-{week:02d}/")
     return 0
+
+
+def _team_job(job):
+    """One team, one view: the numbers and the take (fast, main process). Cards are rendered
+    afterwards in parallel by render_cards()."""
+    view, season, week, team, out_dir, brand, use_llm, n = job
+    if view == "wk":
+        tw = D.build_team_week(season, week, team)
+        if tw is None or tw.total_targets == 0:
+            return None
+        sub, take = "", write_take(tw, detect_signals(tw))
+    else:
+        tw = D.build_team_window(season, week, team, n=n)
+        if tw is None or tw.n < 2 or tw.total_targets == 0:
+            return None
+        sub, take = "l4/", write_take(tw, detect_window_signals(tw))
+    if use_llm:
+        take = narrate(tw, take)
+    img_m = out_dir / "img" / sub / f"{team}-m.webp"
+    img = out_dir / "img" / sub / f"{team}.webp"
+    entry = {
+        "team": team, "team_name": tw.team_name, "color": to_hex(accent(tw.colors)),
+        "img_path": img, "img_rel": f"img/{sub}{img.name}",
+        "img_path_m": img_m, "img_rel_m": f"img/{sub}{img_m.name}", "img_png_m": f"img/{sub}{img_m.name}",
+        "take": take.text, "evidence": [s.evidence for s in take.signals],
+    }
+    take_rec = {"team_name": tw.team_name, "take": take.text, "source": take.source,
+                "signals": [{"key": s.key, "evidence": s.evidence} for s in take.signals]}
+    rows = D.to_rows(tw)
+    if view != "wk":
+        entry["trend"] = {"weeks": tw.weeks, "rows": [{"name": p.name, "shares": p.wk_share, "total": p.tgt_share}
+                                                     for p in tw.by_targets()[:5]]}
+        take_rec["weeks"] = tw.weeks
+        rows = [{**r, "window_weeks": "-".join(map(str, tw.weeks))} for r in rows]
+    return {"entry": entry, "rows": rows, "take": take_rec, "cards": [(tw, img_m, "portrait"), (tw, img, "landscape")]}
+
+
+def _run_parallel(jobs):
+    results = [_team_job(j) for j in jobs]
+    cards = [(tw, path, layout, jobs[0][5]) for r in results if r for tw, path, layout in r["cards"]]
+    render_cards(cards)
+    for r in results:
+        if r:
+            r.pop("cards")
+    return results
 
 
 def _webp(png: Path, remove_png: bool = False) -> Path:

@@ -24,6 +24,7 @@ import hashlib
 import io
 import logging
 import math
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -179,7 +180,9 @@ def _fetch_image(url: str) -> Image.Image | None:
         r = _SESSION.get(url, timeout=8)
         r.raise_for_status()
         img = Image.open(io.BytesIO(r.content)).convert("RGBA")
-        img.save(path)
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        img.save(tmp, format="PNG")
+        os.replace(tmp, path)  # atomic, so parallel workers never read a half-written file
         return img
     except Exception as exc:
         log.debug("image fetch failed %s (%s)", url, exc)
@@ -549,3 +552,29 @@ def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS", layout
     fig.savefig(out_path, dpi=DPI, facecolor=BG)
     plt.close(fig)
     return out_path
+
+
+# --------------------------------------------------------------------------- #
+# Batch rendering (parallel). Workers are *spawned*, not forked: forking a process that
+# has already used polars can deadlock. Workers only draw; all numbers come in ready-made.
+# --------------------------------------------------------------------------- #
+def _render_card(job) -> str:
+    tw, webp_path, layout, brand = job
+    webp_path = Path(webp_path)
+    png = webp_path.with_suffix(".png")
+    render_team(tw, png, brand=brand, layout=PORTRAIT if layout == "portrait" else LANDSCAPE)
+    Image.open(png).convert("RGB").save(webp_path, "WEBP", quality=90, method=6)  # ~3x smaller than PNG
+    png.unlink()
+    return str(webp_path)
+
+
+def render_cards(jobs: list, workers: int | None = None) -> list[str]:
+    """jobs: [(team_data, out .webp path, "portrait"|"landscape", brand)]"""
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor
+
+    workers = workers or min(len(jobs), os.cpu_count() or 1, 8)
+    if workers <= 1:
+        return [_render_card(j) for j in jobs]
+    with ProcessPoolExecutor(max_workers=workers, mp_context=mp.get_context("spawn")) as ex:
+        return list(ex.map(_render_card, jobs, chunksize=2))
