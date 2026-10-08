@@ -143,8 +143,13 @@ def accent(colors: list[str]):
 # --------------------------------------------------------------------------- #
 # Images (headshots, logos) with an on-disk cache and graceful fallback
 # --------------------------------------------------------------------------- #
+_FAILED: set[str] = set()  # don't retry a dead URL for every chart it appears on
+_SESSION = requests.Session()
+_SESSION.headers.update({"User-Agent": "Mozilla/5.0 (volumetrics)", "Accept": "image/png,image/*;q=0.8"})
+
+
 def fetch_image(url: str | None) -> Image.Image | None:
-    if not url:
+    if not url or url in _FAILED:
         return None
     # NFL headshots are Cloudinary URLs with f_auto (format chosen per browser); ask for PNG
     url = url.replace("/f_auto,", "/f_png,")
@@ -156,14 +161,14 @@ def fetch_image(url: str | None) -> Image.Image | None:
         except Exception:
             path.unlink(missing_ok=True)
     try:
-        r = requests.get(url, timeout=12, headers={"User-Agent": "Mozilla/5.0 (volumetrics)",
-                                                   "Accept": "image/png,image/*;q=0.8"})
+        r = _SESSION.get(url, timeout=8)
         r.raise_for_status()
         img = Image.open(io.BytesIO(r.content)).convert("RGBA")
         img.save(path)
         return img
     except Exception as exc:
         log.debug("image fetch failed %s (%s)", url, exc)
+        _FAILED.add(url)
         return None
 
 
@@ -183,9 +188,10 @@ def avatar(player: PlayerLine, fill, px: int = 256) -> np.ndarray:
     if head is not None:
         disk = Image.new("RGBA", (ss, ss), (246, 247, 249, 255))
         w, h = head.size
-        side = min(w, h)
-        # NFL headshots are framed head-and-shoulders: crop a top-centered square
-        crop = head.crop(((w - side) // 2, 0, (w - side) // 2 + side, side)).resize((ss, ss), Image.LANCZOS)
+        side = int(min(w, h) * 0.86)
+        # Headshots are framed head-and-shoulders: crop a slightly tight, top-centered square
+        top = int(h * 0.02)
+        crop = head.crop(((w - side) // 2, top, (w - side) // 2 + side, top + side)).resize((ss, ss), Image.LANCZOS)
         disk.alpha_composite(crop)
         canvas.paste(disk, (0, 0), mask)
     else:

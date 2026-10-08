@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: "0 15 * * 2"   # Tuesday 15:00 UTC (8am PDT / 7am PST), after Monday Night Football
     - cron: "0 15 * * 3"   # Wednesday fallback: fills in any team whose snap counts were late
-  workflow_dispatch:       # "Run workflow" button for manual runs / backfills
+  workflow_dispatch:       # "Run workflow": builds if needed, re-publishes, and re-sends the link
     inputs:
       season: { description: "Season (blank = current)", required: false }
       week:   { description: "Week (blank = latest completed)", required: false }
@@ -57,19 +57,19 @@ jobs:
           git push
 
       - uses: actions/configure-pages@v5
-        if: steps.report.outputs.built == 'true'
+        if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
 
       - uses: actions/upload-pages-artifact@v3
-        if: steps.report.outputs.built == 'true'
+        if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         with:
           path: docs
 
       - id: deployment
-        if: steps.report.outputs.built == 'true'
+        if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/deploy-pages@v4
 
       - name: Email me the link (GitHub notification to the repo owner)
-        if: steps.report.outputs.built == 'true'
+        if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

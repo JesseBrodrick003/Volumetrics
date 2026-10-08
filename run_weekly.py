@@ -69,8 +69,11 @@ def main(argv=None) -> int:
     out_dir = a.out / str(season) / f"week-{week:02d}"
     manifest_path = out_dir / "manifest.json"
     if a.skip_if_exists and manifest_path.exists():
-        if json.loads(manifest_path.read_text()).get("complete"):
+        m = json.loads(manifest_path.read_text())
+        if m.get("complete"):
             log.info("Week %s already complete at %s. Skipping.", week, out_dir)
+            _gh_output(built="false", season=season, week=week, complete="true",
+                       teams=len(m.get("teams", [])), missing="", path=f"{season}/week-{week:02d}/")
             return 0
 
     played = D.teams_that_played(season, week)
