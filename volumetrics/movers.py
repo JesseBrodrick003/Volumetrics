@@ -13,18 +13,23 @@ Rules (tune here):
   - must have played the latest game (a player who just got hurt is not a "faller")
   - must have played at least one game in each half
   - volume floor so 2% -> 6% noise doesn't make the list
-Tags are suggestions from usage alone; we don't know who's rostered in your league:
-  Riser that was barely used early  -> "Waiver add"
-  Riser that already had a role     -> "Buy"
-  Faller whose snaps held           -> "Buy low"   (role intact, looks will come back)
-  Faller whose snaps dropped 15+    -> "Sell"      (role is shrinking)
-  anything else                     -> "Watch"
+Every mover is then checked against the stats in evidence.py (snaps, air yards share, WOPR,
+end-zone targets, targets/route and yards/route estimates for receivers; snaps, goal-line and
+red-zone share, targets, yards after contact, broken tackles and xFP for backs) and graded
+Strong / Solid / Thin. Tags need that backing:
+  Riser, Strong/Solid, barely used early   -> "Waiver add"
+  Riser, Strong/Solid, already had a role  -> "Buy"
+  Faller, 2+ signs the role is intact      -> "Buy low"
+  Faller, 2+ signs it's shrinking, none against -> "Sell"
+  anything thin or mixed                   -> "Watch"
+We don't know who's rostered in your league (yet).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from . import evidence as E
 from .data import PlayerLine, Window
 
 MIN_DELTA = {"WR": 0.06, "TE": 0.06, "RB": 0.12}
@@ -52,6 +57,7 @@ class Mover:
     series: list = field(default_factory=list)
     weeks: list = field(default_factory=list)
     tag: str = ""
+    ev: dict = field(default_factory=dict)  # evidence: grade, support chips, counter chips
 
     @property
     def delta(self) -> float:
@@ -59,9 +65,12 @@ class Mover:
 
     @property
     def score(self) -> float:
-        """Size of the move, normalized by position so RBs and WRs rank fairly together."""
+        """Size of the move (normalized by position so RBs and WRs rank fairly), scaled up when the
+        underlying stats back it and down when they argue against it."""
         ds = (self.snap_after or 0) - (self.snap_before or 0)
-        return self.delta / SCALE[self.position] + ds / 0.30
+        base = self.delta / SCALE[self.position] + ds / 0.30
+        s, c = len(self.ev.get("support", [])), len(self.ev.get("counter", []))
+        return base * max(0.25, 1 + 0.2 * s - 0.25 * c)
 
     @property
     def key(self) -> str:
@@ -99,12 +108,22 @@ def candidates(w: Window, color: str) -> list[Mover]:
                   metric="Backfield share" if pos == "RB" else "Target share",
                   before=a, after=b, snap_before=_avg(sf), snap_after=_avg(sl),
                   xfp_before=_avg(xf), xfp_after=_avg(xl), series=series, weeks=w.weeks)
-        ds = (m.snap_after or 0) - (m.snap_before or 0)
+        m.ev = E.build(w.season, w.team, p.gsis_id, pos, w.weeks, rising=m.delta > 0) if p.gsis_id else \
+            {"grade": "Thin", "support": [], "counter": []}
+        sup, con, grade = len(m.ev["support"]), len(m.ev["counter"]), m.ev["grade"]
         meaningful = b >= (0.40 if pos == "RB" else 0.15) or (m.xfp_after or 0) >= 8
-        if m.delta > 0:
-            m.tag = ("Waiver add" if a < LOW_START[pos] else "Buy") if meaningful else "Watch"
-        else:
-            m.tag = "Buy low" if ds >= -0.10 else ("Sell" if ds <= -0.15 else "Watch")
+        if m.delta > 0:  # a riser needs real backing before we call it an add or a buy
+            if grade == "Thin" or not meaningful:
+                m.tag = "Watch"
+            else:
+                m.tag = "Waiver add" if a < LOW_START[pos] else "Buy"
+        else:  # a faller: role intact (buy low) vs. role shrinking (sell)
+            if con >= 2 and con > sup:
+                m.tag = "Buy low"
+            elif sup >= 2 and con == 0:
+                m.tag = "Sell"
+            else:
+                m.tag = "Watch"
         out.append(m)
     return out
 

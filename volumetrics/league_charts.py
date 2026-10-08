@@ -27,6 +27,7 @@ from PIL import Image  # noqa: E402
 from .charts import BG, DPI, GRID, MUTED, TEXT, _mix, fetch_image, team_palette  # noqa: E402
 
 TEAL, PINK, ORANGE = "#16d6e8", "#ff2b6e", "#ff8a1e"
+BRAND_TEXT = "WELL HERE'S A GUY VOLUMETRICS"
 _LOGOS: dict[str, np.ndarray | None] = {}
 
 
@@ -82,7 +83,7 @@ def _frame(w_in: float, h_in: float, title: str, sub: str):
     top = 1 - 0.55 / h_in
     fig.text(0.06, top, title, fontsize=30, color=TEXT, weight="medium", va="top")
     fig.text(0.06, top - 0.62 / h_in, sub, fontsize=17, color=MUTED, va="top")  # subscript
-    fig.text(0.06, 0.28 / h_in, "VOLUMETRICS", fontsize=14, color=MUTED, weight="medium", va="bottom")
+    fig.text(0.06, 0.28 / h_in, BRAND_TEXT, fontsize=14, color=MUTED, weight="medium", va="bottom")
     fig.text(0.94, 0.28 / h_in, "Data: nflverse (pbp, PFR)", fontsize=12, color="#5d6573", ha="right", va="bottom")
     return fig
 

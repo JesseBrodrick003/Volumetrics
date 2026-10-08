@@ -27,6 +27,8 @@ CSS = """
 @font-face{font-family:Jost;src:url(%(medium)s) format("truetype");font-weight:500;font-display:swap}
 @font-face{font-family:Jost;src:url(%(semibold)s) format("truetype");font-weight:600;font-display:swap}
 @font-face{font-family:"Big Shoulders";src:url(%(display)s) format("truetype");font-weight:800;font-display:swap}
+@font-face{font-family:Oxanium;src:url(%(ox6)s) format("truetype");font-weight:600;font-display:swap}
+@font-face{font-family:Oxanium;src:url(%(ox8)s) format("truetype");font-weight:800;font-display:swap}
 :root,:root[data-theme="dark"],:root[data-theme="light"]{
   --bg:#0f1218;--raise:#161a22;--ink:#eef0f4;--muted:#8f97a4;--faint:#5f6775;--line:#212632;
   --banner:#f6c945;--banner-ink:#1b1505;--team:#8f97a4}
@@ -40,40 +42,84 @@ a{color:inherit}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .wrap{max-width:1000px;margin:0 auto;padding:0 18px 56px}
 
-/* Hero: night-game smoke lit teal / magenta / orange, field lines, broadcast-style week tag */
-.hero{position:relative;isolation:isolate;overflow:hidden;margin:16px 0 0;border-radius:16px;
-      padding:30px 22px 26px;min-height:212px;background:#05070b;
-      box-shadow:inset 0 0 0 1px rgba(255,255,255,.06),inset 0 -60px 80px -40px rgba(0,0,0,.9)}
-.hero .glow{position:absolute;inset:-25%%;z-index:-3;filter:blur(10px) saturate(1.25);
+/* Hero: futuristic broadcast title. Neon smoke, moving grid floor, the shield behind glowing bars,
+   chrome title with a light sweep, HUD corners, scanlines. All decoration is aria-hidden. */
+.hero{position:relative;isolation:isolate;overflow:hidden;margin:16px 0 0;border-radius:18px;
+      padding:24px 22px 26px;min-height:350px;background:#03050a;border:1px solid rgba(80,230,255,.18);
+      box-shadow:0 24px 70px -36px rgba(22,214,232,.55),0 0 90px -50px rgba(255,43,110,.6)}
+.hero .fx{position:absolute;pointer-events:none}
+.hero .glow{inset:-25%%;z-index:-6;filter:blur(12px) saturate(1.3);
       background:
-        radial-gradient(40%% 52%% at 16%% 18%%,rgba(22,224,240,.95),transparent 70%%),
-        radial-gradient(34%% 46%% at 90%% 26%%,rgba(98,72,255,.55),transparent 72%%),
-        radial-gradient(46%% 56%% at 82%% 96%%,rgba(255,34,112,.95),transparent 70%%),
-        radial-gradient(40%% 46%% at 38%% 108%%,rgba(255,140,24,.95),transparent 70%%)}
-.hero .smoke{position:absolute;inset:0;z-index:-2;opacity:.72;mix-blend-mode:multiply;
+        radial-gradient(38%% 50%% at 14%% 14%%,rgba(22,224,240,.85),transparent 70%%),
+        radial-gradient(32%% 44%% at 92%% 18%%,rgba(98,72,255,.55),transparent 72%%),
+        radial-gradient(44%% 54%% at 84%% 98%%,rgba(255,34,112,.85),transparent 70%%),
+        radial-gradient(40%% 44%% at 36%% 110%%,rgba(255,140,24,.85),transparent 70%%)}
+.hero .smoke{inset:0;z-index:-5;opacity:.7;mix-blend-mode:multiply;
       background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='720' height='360'><filter id='s'><feTurbulence type='fractalNoise' baseFrequency='.0055 .011' numOctaves='5' seed='11'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1.6 0 0 0 1.05'/></filter><rect width='100%%' height='100%%' filter='url(%%23s)'/></svg>");
       background-size:720px 360px;background-position:center}
-.hero .wisps{position:absolute;inset:0;z-index:-2;opacity:.33;mix-blend-mode:screen;
-      background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='560' height='300'><filter id='w'><feTurbulence type='fractalNoise' baseFrequency='.009 .02' numOctaves='4' seed='4'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1.9 0 0 0 -.95'/></filter><rect width='100%%' height='100%%' filter='url(%%23w)'/></svg>");
-      background-size:560px 300px}
-.hero .field{position:absolute;left:-30%%;right:-30%%;bottom:-6%%;height:58%%;z-index:-1;opacity:.55;
-      background:repeating-linear-gradient(90deg,rgba(255,255,255,.22) 0 2px,transparent 2px 9%%);
-      transform:perspective(260px) rotateX(58deg);transform-origin:50%% 100%%;
-      -webkit-mask-image:linear-gradient(to top,#000 10%%,transparent 85%%);mask-image:linear-gradient(to top,#000 10%%,transparent 85%%)}
-.hero .bars{position:absolute;right:4%%;bottom:0;height:78%%;width:44%%;z-index:-1;opacity:.28}
-.hero .grain{position:absolute;inset:0;z-index:-1;opacity:.16;pointer-events:none;mix-blend-mode:overlay;
+.hero .grid{left:-60%%;right:-60%%;bottom:-4%%;height:62%%;z-index:-4;opacity:.55;
+      background-image:linear-gradient(rgba(70,232,255,.55) 1px,transparent 1px),linear-gradient(90deg,rgba(70,232,255,.55) 1px,transparent 1px);
+      background-size:44px 44px;transform:perspective(220px) rotateX(64deg);transform-origin:50%% 100%%;
+      -webkit-mask-image:linear-gradient(to top,#000 15%%,transparent 92%%);mask-image:linear-gradient(to top,#000 15%%,transparent 92%%);
+      animation:vgrid 5s linear infinite}
+@keyframes vgrid{to{background-position:0 44px,0 0}}
+.hero .emblem{position:absolute;right:-5%%;bottom:0;width:66%%;height:58%%;z-index:-3;pointer-events:none}
+.hero .emblem>*{position:absolute;left:54%%;top:50%%;translate:-50%% -50%%}
+.hero .halo{height:122%%;aspect-ratio:1;border-radius:50%%;
+      background:conic-gradient(from 0deg,transparent 0 8%%,rgba(22,224,240,.9) 14%%,transparent 26%%,rgba(255,43,110,.85) 46%%,
+        transparent 58%%,rgba(255,140,24,.8) 74%%,transparent 86%%);
+      -webkit-mask:radial-gradient(circle,transparent 60%%,#000 61.5%%,#000 64%%,transparent 65.5%%);
+      mask:radial-gradient(circle,transparent 60%%,#000 61.5%%,#000 64%%,transparent 65.5%%);
+      animation:spin 12s linear infinite;filter:drop-shadow(0 0 8px rgba(22,224,240,.8))}
+.hero .halo.two{height:96%%;animation-duration:18s;animation-direction:reverse;opacity:.7}
+@keyframes spin{to{rotate:360deg}}
+.hero .core{height:112%%;aspect-ratio:1;border-radius:50%%;
+      background:radial-gradient(circle,rgba(22,214,232,.35),rgba(255,43,110,.18) 45%%,transparent 70%%);filter:blur(6px)}
+.hero .shield{height:80%%;opacity:.85;
+      filter:drop-shadow(0 0 14px rgba(22,224,240,.75)) drop-shadow(0 0 36px rgba(255,43,110,.45)) saturate(1.15) brightness(1.05)}
+.hero .emblem>.bars{left:0;top:auto;bottom:0;translate:none;height:82%%;width:100%%;mix-blend-mode:screen}
+.hero .bars rect.b{transform-box:fill-box;transform-origin:50%% 100%%;animation:rise 1.2s cubic-bezier(.2,.85,.2,1) both;
+      animation-delay:var(--d)}
+@keyframes rise{from{transform:scaleY(.04);opacity:.1}to{transform:none;opacity:1}}
+.hero .scan{inset:0;z-index:-1;opacity:.5;mix-blend-mode:overlay;
+      background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px)}
+.hero .grain{inset:0;z-index:-1;opacity:.14;mix-blend-mode:overlay;
       background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%%' height='100%%' filter='url(%%23g)'/></svg>")}
+.hero .hud{position:absolute;width:18px;height:18px;border-color:rgba(110,240,255,.85);border-style:solid;border-width:0;
+      filter:drop-shadow(0 0 4px rgba(22,224,240,.9))}
+.hud.tl{top:10px;left:10px;border-top-width:2px;border-left-width:2px}
+.hud.tr{top:10px;right:10px;border-top-width:2px;border-right-width:2px}
+.hud.bl{bottom:10px;left:10px;border-bottom-width:2px;border-left-width:2px}
+.hud.br{bottom:10px;right:10px;border-bottom-width:2px;border-right-width:2px}
+.hero-in{position:relative}
+.chip{display:inline-flex;align-items:center;gap:9px;margin:0;padding:7px 12px 6px;border-radius:999px;
+      font:600 11.5px/1 Oxanium,Jost,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#c9f8ff;
+      border:1px solid rgba(80,230,255,.4);background:rgba(4,18,28,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.chip b{color:#ff7aa8;font-weight:600}
+.pulse{width:8px;height:8px;border-radius:50%%;background:#3fe3f0;box-shadow:0 0 0 0 rgba(63,227,240,.8);animation:pulse 1.8s ease-out infinite}
+@keyframes pulse{70%%{box-shadow:0 0 0 9px rgba(63,227,240,0)}100%%{box-shadow:0 0 0 0 rgba(63,227,240,0)}}
+.hero h1{margin:18px 0 0;font-weight:400}
+.brand{display:block;font:600 clamp(13px,3.7vw,22px)/1.1 Oxanium,Jost,sans-serif;letter-spacing:.32em;text-transform:uppercase;
+      background:linear-gradient(90deg,#8ff6ff,#ffffff 45%%,#ff9fc4);-webkit-background-clip:text;background-clip:text;color:transparent;
+      filter:drop-shadow(0 0 8px rgba(22,224,240,.5))}
+.title{position:relative;display:block;margin-top:6px;font:800 clamp(42px,12.2vw,110px)/.98 Oxanium,"Big Shoulders",sans-serif;
+      letter-spacing:.005em;text-transform:uppercase;
+      background:linear-gradient(105deg,transparent 40%%,rgba(255,255,255,.95) 50%%,transparent 60%%),
+                 linear-gradient(180deg,#ffffff 0%%,#ecfcff 32%%,#8beeff 50%%,#ffffff 60%%,#ffcfe1 100%%);
+      background-size:280%% 100%%,100%% 100%%;background-position:130%% 0,0 0;background-repeat:no-repeat;
+      -webkit-background-clip:text;background-clip:text;color:transparent;
+      filter:drop-shadow(0 0 10px rgba(22,224,240,.65)) drop-shadow(0 0 30px rgba(255,43,110,.4));
+      animation:sweep 6s ease-in-out 1.4s infinite}
+@keyframes sweep{0%%,62%%{background-position:130%% 0,0 0}100%%{background-position:-60%% 0,0 0}}
+.title::before,.title::after{content:attr(data-text);position:absolute;inset:0;z-index:-1;-webkit-background-clip:initial;
+      background:none;opacity:.55;mix-blend-mode:screen}
+.title::before{color:#00f0ff;transform:translate(-2px,0)}
+.title::after{color:#ff2b6e;transform:translate(2px,1px)}
+.tagline{margin:12px 0 0;color:rgba(235,246,255,.88);font-size:15.5px;max-width:20ch;text-shadow:0 1px 10px rgba(0,0,0,.8)}
+@media (min-width:721px){.hero{min-height:330px;padding:36px 36px 32px}.tagline{font-size:17px;max-width:34ch}
+  .hero .emblem{right:1%%;width:34%%;height:100%%}.title{font-size:clamp(42px,8.4vw,88px)}}
+@media (prefers-reduced-motion:reduce){.hero *{animation:none!important}}
 .dek{color:var(--muted);font-size:15px}
-.kicker{display:flex;align-items:center;gap:12px;margin:0 0 8px}
-.tag-wk{display:inline-block;transform:skewX(-14deg);background:linear-gradient(90deg,#ff8a1e,#ff2b6e);
-      padding:4px 14px 3px;border-radius:3px;box-shadow:0 0 22px rgba(255,60,100,.45)}
-.tag-wk span{display:inline-block;transform:skewX(14deg);font:800 21px/1 "Big Shoulders",Impact,sans-serif;
-      letter-spacing:.06em;color:#fff}
-.season{font:800 15px/1 "Big Shoulders",Impact,sans-serif;letter-spacing:.18em;color:rgba(255,255,255,.72)}
-.title{margin:0;font:800 clamp(58px,17.5vw,128px)/.86 "Big Shoulders",Impact,"Arial Narrow",sans-serif;
-      letter-spacing:.012em;color:#fff;text-transform:uppercase;
-      text-shadow:0 0 1px rgba(255,255,255,.9),0 0 18px rgba(22,214,232,.55),0 0 46px rgba(255,40,110,.35),0 3px 0 rgba(0,0,0,.35)}
-.tagline{margin:12px 0 0;color:rgba(255,255,255,.82);font-size:15.5px;max-width:30ch;text-shadow:0 1px 8px rgba(0,0,0,.6)}
 
 /* Headliners */
 .leaders{margin:22px auto 4px;max-width:560px}
@@ -193,8 +239,10 @@ table.lbt{border-collapse:separate;border-spacing:0;width:100%%;font-size:14px;f
       text-transform:uppercase;margin:22px 0 6px}
 .mv-h.up{color:#3fe3f0}.mv-h.down{color:#ff4d86}
 ol.movers{list-style:none;margin:0;padding:0}
-.movers li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
-.movers li[hidden]{display:none}
+.movers>li{position:relative;display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.movers>li .spark{position:absolute;right:0;top:14px}
+.movers .mv-top,.movers .mv-sub,.movers .mv-stat,.movers .mv-meta{margin-right:92px}
+.movers>li[hidden]{display:none}
 .movers .av{width:56px;height:56px;border-radius:50%%;display:block;box-shadow:0 0 0 2px var(--team)}
 .mv-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mv-name{font-weight:600;font-size:17px}
@@ -207,6 +255,20 @@ ol.movers{list-style:none;margin:0;padding:0}
 .mv-d{font-weight:600;margin-left:4px}.mv-d.up{color:#3fe3f0}.mv-d.down{color:#ff4d86}
 .mv-meta{color:var(--muted);font-size:13px;margin-top:2px}
 .spark{width:84px;height:40px;display:block}
+.ev{margin-top:8px}
+.ev-grade{display:inline-block;font:600 11.5px/1 Oxanium,Jost,sans-serif;letter-spacing:.12em;text-transform:uppercase;
+      padding:5px 9px 4px;border-radius:6px;border:1px solid currentColor}
+.ev-strong .ev-grade{color:#3fe3f0;background:rgba(63,227,240,.08)}
+.ev-solid .ev-grade{color:#ffb02e;background:rgba(255,176,46,.08)}
+.ev-thin .ev-grade{color:#8f97a4}
+ul.chips{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+ul.chips li{font-size:12.5px;line-height:1.3;padding:4px 8px;border-radius:7px;background:#161b25;border:1px solid #232937;color:var(--ink)}
+ul.chips li span{color:var(--muted)}
+ul.chips li.pro b{color:#3fe3f0}
+.movers>li[data-dir="down"] ul.chips li.pro b{color:#ff4d86}
+ul.chips li.con{background:transparent;border-style:dashed;color:var(--muted)}
+ul.chips li.con b{color:#ffb02e}
+.ev-info{margin:6px 0 0;color:var(--faint);font-size:12.5px}
 .mv-empty{color:var(--muted);font-size:15px;padding:10px 0}
 
 /* Week-by-week table under each last-4 card */
@@ -288,7 +350,7 @@ document.querySelectorAll('.chart-tabs').forEach(g=>{const bs=[...g.querySelecto
  bs.forEach(x=>{x.setAttribute('aria-pressed',x===b?'true':'false');const f=document.getElementById(x.dataset.chart);if(f)f.hidden=x!==b;});}));});
 /* movers position filter */
 document.querySelectorAll('.filters').forEach(g=>{const bs=[...g.querySelectorAll('button')];const root=g.closest('.panel');
- const run=pos=>{root.querySelectorAll('ol.movers').forEach(ol=>{let shown=0;ol.querySelectorAll('li').forEach(li=>{
+ const run=pos=>{root.querySelectorAll('ol.movers').forEach(ol=>{let shown=0;ol.querySelectorAll(':scope > li').forEach(li=>{
   const ok=pos==='all'?li.dataset.all==='1':(li.dataset.pos===pos&&+li.dataset.pr<=8);li.hidden=!ok;if(ok)shown++;});
   const em=ol.nextElementSibling;if(em&&em.classList.contains('mv-empty'))em.hidden=shown>0;});};
  bs.forEach(b=>b.addEventListener('click',()=>{bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));run(b.dataset.pos);}));run('all');});
@@ -309,28 +371,53 @@ def _font_src(name: str, embed: bool, rel_assets: str, full: bool = False) -> st
     return f"{rel_assets}/fonts/{fname}"
 
 
-BARS_SVG = (  # decorative rising bars behind the title: the "volumetrics" in the vibe
+BARS_SVG = (  # glass bars with bright caps, rising on load, in front of the shield
     '<svg class="bars" viewBox="0 0 120 100" preserveAspectRatio="xMaxYMax meet" aria-hidden="true">'
-    '<defs><linearGradient id="hb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ff3ff"/>'
-    '<stop offset="1" stop-color="#16d6e8" stop-opacity="0"/></linearGradient></defs>'
-    + "".join(f'<rect x="{4 + i * 19}" y="{100 - h}" width="13" height="{h}" rx="1.5" fill="url(#hb)"/>'
-              for i, h in enumerate((34, 52, 44, 70, 62, 92)))
+    '<defs><linearGradient id="hbc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bafcff" stop-opacity=".95"/>'
+    '<stop offset=".55" stop-color="#16d6e8" stop-opacity=".45"/><stop offset="1" stop-color="#16d6e8" stop-opacity="0"/></linearGradient>'
+    '<linearGradient id="hbp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd0e2" stop-opacity=".95"/>'
+    '<stop offset=".55" stop-color="#ff2b6e" stop-opacity=".5"/><stop offset="1" stop-color="#ff2b6e" stop-opacity="0"/></linearGradient></defs>'
+    + "".join(
+        f'<rect class="b" style="--d:{0.15 + i * 0.09:.2f}s" x="{6 + i * 18.5}" y="{100 - h}" width="11" height="{h}" rx="1.2" '
+        f'fill="url(#{"hbp" if i == 5 else "hbc"})"/>'
+        f'<rect class="b" style="--d:{0.15 + i * 0.09:.2f}s" x="{6 + i * 18.5}" y="{100 - h}" width="11" height="1.8" rx=".9" '
+        f'fill="#ffffff" opacity=".95"/>'
+        for i, h in enumerate((30, 48, 40, 64, 56, 88)))
     + "</svg>"
 )
 
+BRAND = "Well Here\u2019s A Guy"
 
-def hero(week_label: str, season_label: str, tagline: str) -> str:
+
+def hero(week_label: str, season_label: str, tagline: str, shield_src: str | None = None) -> str:
+    shield = f'<img class="shield" src="{shield_src}" alt="">' if shield_src else ""
     return (
         '<header class="hero">'
-        '<div class="glow" aria-hidden="true"></div><div class="smoke" aria-hidden="true"></div>'
-        '<div class="wisps" aria-hidden="true"></div><div class="field" aria-hidden="true"></div>'
-        f'{BARS_SVG}<div class="grain" aria-hidden="true"></div>'
-        f'<p class="kicker"><span class="tag-wk"><span>{html.escape(week_label.upper())}</span></span>'
-        f'<span class="season">{html.escape(season_label.upper())}</span></p>'
-        '<h1 class="title">Volumetrics</h1>'
+        '<div class="fx glow" aria-hidden="true"></div><div class="fx smoke" aria-hidden="true"></div>'
+        '<div class="fx grid" aria-hidden="true"></div>'
+        f'<div class="emblem" aria-hidden="true"><div class="core"></div><div class="halo"></div>'
+        f'<div class="halo two"></div>{shield}{BARS_SVG}</div>'
+        '<div class="fx scan" aria-hidden="true"></div><div class="fx grain" aria-hidden="true"></div>'
+        '<span class="hud tl" aria-hidden="true"></span><span class="hud tr" aria-hidden="true"></span>'
+        '<span class="hud bl" aria-hidden="true"></span><span class="hud br" aria-hidden="true"></span>'
+        '<div class="hero-in">'
+        f'<p class="chip"><i class="pulse" aria-hidden="true"></i>{html.escape(week_label.upper())} <b>/</b> '
+        f'{html.escape(season_label.upper())}</p>'
+        f'<h1><span class="brand">{html.escape(BRAND)}</span>'
+        f'<span class="title" data-text="Volumetrics">Volumetrics</span></h1>'
         f'<p class="tagline">{html.escape(tagline)}</p>'
-        "</header>"
+        "</div></header>"
     )
+
+
+def _head_app(root: str) -> str:
+    """Home-screen app bits: manifest, icons, iOS full-screen."""
+    return (f'<link rel="manifest" href="{root}/manifest.webmanifest">'
+            f'<link rel="apple-touch-icon" href="{root}/assets/brand/icon-180.png">'
+            '<meta name="apple-mobile-web-app-capable" content="yes">'
+            '<meta name="mobile-web-app-capable" content="yes">'
+            '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">'
+            '<meta name="apple-mobile-web-app-title" content="Volumetrics">')
 
 
 def _jpeg_data_uri(path: Path, max_w: int = 1080, quality: int = 80) -> str:
@@ -498,7 +585,7 @@ def _movers_list(items: list[dict], logos: dict, up: bool, embed: bool) -> str:
             src = "data:image/webp;base64," + base64.b64encode(Path(it["avatar_path"]).read_bytes()).decode()
         anchor = f"#{m.team}-l4"
         lis += (
-            f'<li data-pos="{m.position}" data-all="{1 if it["all"] else 0}" data-pr="{it["pos_rank"]}" '
+            f'<li data-dir="{"up" if up else "down"}" data-pos="{m.position}" data-all="{1 if it["all"] else 0}" data-pr="{it["pos_rank"]}" '
             f'style="--team:{m.color}">'
             f'<img class="av" src="{src}" alt="" width="56" height="56" loading="lazy">'
             f'<div><div class="mv-top"><a class="mv-name" href="{anchor}" style="text-decoration:none">'
@@ -507,10 +594,34 @@ def _movers_list(items: list[dict], logos: dict, up: bool, embed: bool) -> str:
             f'<div class="mv-sub">{m.position} \u00b7 {_logo_img(m.team, logos, 18)}{m.team}</div>'
             f'<div class="mv-stat">{m.metric} <b>{m.before:.0%} \u2192 {m.after:.0%}</b>'
             f'<span class="mv-d {cls}">{arrow}{d}</span></div>'
-            f'<div class="mv-meta">{meta}</div></div>'
+            f'<div class="mv-meta">{meta}</div>{_evidence_html(m, up)}</div>'
             f'{_spark(m.series, up)}</li>'
         )
     return f'<ol class="movers">{lis}</ol><p class="mv-empty" hidden>Nobody at this position moved enough to make the list.</p>'
+
+
+GRADE_LABEL = {"Strong": "Strong evidence", "Solid": "Solid evidence", "Thin": "Thin evidence"}
+
+
+def _evidence_html(m, up: bool) -> str:
+    """Grade + the stats that back the call (and the ones that argue against it)."""
+    ev = getattr(m, "ev", None) or {}
+    if not ev:
+        return ""
+    pro_mark = "\u25B2" if up else "\u25BC"
+    chips = "".join(f'<li class="pro"><b>{pro_mark}</b> {html.escape(a)} <span>{html.escape(b)}</span></li>'
+                    for a, b in ev.get("support", [])[:5])
+    con_mark = "\u2715" if up else "\u21BA"  # x = argues against a riser; loop = role still intact for a faller
+    chips += "".join(f'<li class="con"><b>{con_mark}</b> {html.escape(a)} <span>{html.escape(b)}</span></li>'
+                     for a, b in ev.get("counter", [])[:2])
+    info = ev.get("info", {})
+    extra = ""
+    if "wopr" in info:
+        a, b = info["wopr"]
+        extra = f'<p class="ev-info">WOPR {a:.2f} \u2192 {b:.2f}</p>'
+    g = ev.get("grade", "Thin")
+    return (f'<div class="ev ev-{g.lower()}"><span class="ev-grade">{GRADE_LABEL.get(g, g)}</span>'
+            f'<ul class="chips">{chips or "<li class=con>No supporting stats yet</li>"}</ul>{extra}</div>')
 
 
 def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
@@ -518,17 +629,23 @@ def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
     k = n // 2
     return (
         f'<p class="mv-intro">Whose role grew or shrank across each team\'s last {n} games: the last {k} vs the first '
-        f'{k}, counting only games he played. Receivers and tight ends by target share, running backs by backfield '
-        f'share (carries plus targets). Tags come from usage alone, so check who\'s available in your league.</p>'
+        f'{k}, counting only games he played. Receivers and tight ends move on target share, running backs on '
+        f'backfield share. Then every move is checked against the stats that confirm a real role change, and graded '
+        f'<b>Strong</b>, <b>Solid</b> or <b>Thin</b>. Only Strong or Solid moves get a Waiver add, Buy or Sell tag.</p>'
         '<div class="filters" role="group" aria-label="Position">'
         + "".join(f'<button type="button" data-pos="{v}" aria-pressed="{"true" if v == "all" else "false"}">{lbl}</button>'
                   for v, lbl in (("all", "All"), ("RB", "RB"), ("WR", "WR"), ("TE", "TE")))
         + '</div>'
         f'<h3 class="mv-h up">\u25B2 Risers</h3>{_movers_list(p["risers"], logos, True, embed)}'
         f'<h3 class="mv-h down">\u25BC Fallers</h3>{_movers_list(p["fallers"], logos, False, embed)}'
-        '<p class="lb-note">Waiver add: barely used early, real role now. Buy: already had a role and it grew. '
-        'Buy low: looks dropped but he\'s still on the field. Sell: snaps and looks both shrinking. '
-        'Players who missed the latest game are left out, since that\'s an injury question, not a role change.</p>'
+        '<p class="lb-note"><b>What counts as evidence.</b> Receivers: snaps, air yards share (deeper looks, not just '
+        'more), end-zone targets, targets per route and yards per route (2.0+ is excellent). Backs: snaps, goal-line '
+        'and red-zone carry share, targets per game, yards after contact, broken tackles, expected points per game. '
+        'WOPR is shown but not counted, since it moves with target share. Routes aren\'t public for 2026, so they\'re '
+        'estimated as snap share \u00d7 team dropbacks (marked est.; generous for blocking tight ends). '
+        '<b>Tags.</b> Waiver add: barely used early, real role now. Buy: had a role and it grew. Buy low: looks dipped '
+        'but the role signs held. Sell: the role is shrinking on several fronts. Watch: thin or mixed. Players who '
+        'missed the latest game are left out (that\'s an injury question).</p>'
     )
 
 
@@ -637,7 +754,7 @@ def _sections(entries: list[dict], week: int, embed: bool, suffix: str) -> str:
 
 def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, embed: bool = False,
                rel_assets: str = "../../assets", missing: list[str] | None = None,
-               take_source: str = "template", logos: dict | None = None) -> Path:
+               take_source: str = "template", logos: dict | None = None, shield: str | None = None) -> Path:
     """
     logos: {team: image src} for the team buttons (falls back to the abbreviation).
     panels: [{key: "wk"|"l4", label, entries, leaders, leaders_title}] - first one shows by default.
@@ -649,6 +766,8 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
         "medium": _font_src("Medium", embed, rel_assets),
         "semibold": _font_src("SemiBold", embed, rel_assets),
         "display": _font_src("BigShouldersDisplay-ExtraBold", embed, rel_assets, full=True),
+        "ox6": _font_src("Oxanium-SemiBold", embed, rel_assets, full=True),
+        "ox8": _font_src("Oxanium-ExtraBold", embed, rel_assets, full=True),
         "embed_css": "@media (min-width:721px){.card{max-width:520px;margin:0 auto}}" if embed else "",
     }
     def all_entries(p):
@@ -704,13 +823,15 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
     page = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1218">
-<title>Week {week} Volumetrics, {season}</title>
+<meta name="theme-color" content="#03050a">
+<title>Week {week} · Well Here's A Guy Volumetrics</title>
+<meta name="description" content="Week {week} NFL usage report: target share, snap share, backfields, rolling trends and buy/sell risers and fallers for every team.">
+{_head_app(rel_assets.rsplit('/', 1)[0])}
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
 <script>document.documentElement.classList.add('js')</script>
 <style>{css}</style></head>
 <body><div class="wrap">
-{hero(f"Week {week}", f"{season} Season", "Target share and snap % for every team")}
+{hero(f"Week {week}", f"{season} Season", "Target share, backfields, trends and buy/sell signals for every NFL team", shield)}
 <div class="bar"><div class="tabs" role="tablist" aria-label="View" style="--n:{len(panels)}">{tabs}</div>
 <div class="row2">{subsw}<nav aria-label="Jump to a team">{nav}</nav></div></div>
 <main>{body}</main>
@@ -742,20 +863,31 @@ def build_index(docs: Path) -> Path:
               if weeks else "<p class='dek'>No weeks yet.</p>")
     css = CSS % {"regular": "assets/fonts/Jost-Regular.ttf", "medium": "assets/fonts/Jost-Medium.ttf",
                  "semibold": "assets/fonts/Jost-SemiBold.ttf",
-                 "display": "assets/fonts/BigShouldersDisplay-ExtraBold.ttf", "embed_css": ""}
+                 "display": "assets/fonts/BigShouldersDisplay-ExtraBold.ttf",
+                 "ox6": "assets/fonts/Oxanium-SemiBold.ttf", "ox8": "assets/fonts/Oxanium-ExtraBold.ttf", "embed_css": ""}
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0f1218"><title>Volumetrics</title>
+<meta name="theme-color" content="#03050a"><title>Well Here's A Guy Volumetrics</title>
+{_head_app('.')}
 <style>{css}
 .go{{display:block;text-align:center;margin:22px 0;padding:14px;border-radius:10px;border:1px solid var(--line);
     text-decoration:none;font-weight:500;font-size:18px}}
 .go:focus-visible{{outline:2px solid var(--banner);outline-offset:3px}}
 ul.past{{list-style:none;padding:0;margin:0}} ul.past li{{border-top:1px solid var(--line)}}
 ul.past a{{display:block;padding:12px 0;text-decoration:none}}</style></head>
-<body><div class="wrap">{hero("Every week", "NFL", "Target share and snap % for every team, every week")}
+<body><div class="wrap">{hero("Every week", "NFL season", "Target share, backfields, trends and buy/sell signals for every NFL team", "assets/brand/nfl.png" if (docs / "assets/brand/nfl.png").exists() else None)}
 {latest}
 {'<h2 class="dek" style="text-align:left;margin-top:28px">Earlier weeks</h2><ul class="past">' + items + '</ul>' if items else ''}
 </div></body></html>"""
     out = docs / "index.html"
     out.write_text(page, encoding="utf-8")
+    import json
+    (docs / "manifest.webmanifest").write_text(json.dumps({
+        "name": "Well Here's A Guy Volumetrics", "short_name": "Volumetrics",
+        "description": "Weekly NFL usage: target share, backfields, trends and buy/sell signals.",
+        "start_url": "./", "scope": "./", "display": "standalone",
+        "background_color": "#03050a", "theme_color": "#03050a",
+        "icons": [{"src": "assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                  {"src": "assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}],
+    }, indent=2))
     return out

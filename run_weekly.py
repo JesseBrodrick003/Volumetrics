@@ -55,7 +55,7 @@ def main(argv=None) -> int:
     ap.add_argument("--force", action="store_true", help="rebuild even if the week is already complete")
     ap.add_argument("--teams", nargs="*", default=None, help="team abbreviations, e.g. CAR DAL")
     ap.add_argument("--out", type=Path, default=ROOT / "docs")
-    ap.add_argument("--brand", default=os.getenv("VOLUMETRICS_BRAND") or "VOLUMETRICS",
+    ap.add_argument("--brand", default=os.getenv("VOLUMETRICS_BRAND") or "WELL HERE'S A GUY VOLUMETRICS",
                     help="text in the top-right corner of every chart (your handle)")
     ap.add_argument("--no-llm", action="store_true", help="skip the Claude voice pass even if a key is set")
     ap.add_argument("--embed", action="store_true", help="also write report-standalone.html with everything inlined")
@@ -143,6 +143,8 @@ def main(argv=None) -> int:
             rows = [r for r in rows if r]
             if not rows:
                 return []
+            import volumetrics.league_charts as LC
+            LC.BRAND_TEXT = a.brand
             charts = render_league(rows, span, out_dir / "img" / "league" / key, logo_urls,
                                    {r["team"]: r["colors"] for r in rows}, logo_dir)
             for c in charts:
@@ -238,11 +240,14 @@ def main(argv=None) -> int:
 
     source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"
     logo_paths = team_logos([e for p in panels for e in p.get("entries", [])], a.out)
+    shield = brand_assets(a.out)
     build_page(season, week, panels, out_dir / "index.html", missing=missing, take_source=source,
-               logos=_logo_srcs(logo_paths, False))
+               logos=_logo_srcs(logo_paths, False), shield="../../assets/brand/nfl.png" if shield else None)
     if a.embed:
+        import base64
         build_page(season, week, panels, out_dir / "report-standalone.html", embed=True,
-                   missing=missing, take_source=source, logos=_logo_srcs(logo_paths, True))
+                   missing=missing, take_source=source, logos=_logo_srcs(logo_paths, True),
+                   shield=("data:image/png;base64," + base64.b64encode(shield.read_bytes()).decode()) if shield else None)
 
     for name, data in (("data.csv", rows), ("data_l4.csv", rows_l4)):
         if data:
@@ -270,6 +275,23 @@ def main(argv=None) -> int:
     _gh_output(built="true", season=season, week=week, complete=str(complete).lower(),
                teams=len(entries), missing=" ".join(missing), path=f"{season}/week-{week:02d}/")
     return 0
+
+
+SHIELD_URL = "https://raw.githubusercontent.com/nflverse/nflverse-pbp/master/NFL.png"  # nflverse's league logo
+
+
+def brand_assets(docs: Path) -> Path | None:
+    """App icons into docs/assets/brand, plus the league shield for the title (downloaded once)."""
+    folder = docs / "assets" / "brand"
+    folder.mkdir(parents=True, exist_ok=True)
+    for f in (ROOT / "assets" / "brand").glob("*.png"):
+        shutil.copy2(f, folder / f.name)
+    path = folder / "nfl.png"
+    if not path.exists():
+        img = fetch_image(SHIELD_URL)
+        if img is not None:
+            img.save(path)
+    return path if path.exists() else None
 
 
 def team_logos(entries: list[dict], docs: Path) -> dict[str, Path]:

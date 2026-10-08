@@ -58,8 +58,8 @@ def teaser(season: int, week: int, n: int = 3) -> list[str]:
 def build(season: int, week: int, url: str, sender: str, bcc: list[str], note: str = "") -> EmailMessage:
     lines = teaser(season, week)
     msg = EmailMessage()
-    msg["Subject"] = f"📊 Week {week} Volumetrics is up"
-    msg["From"] = f"Volumetrics <{sender}>"
+    msg["Subject"] = f"📊 Week {week} · Well Here's A Guy Volumetrics is up"
+    msg["From"] = f"Well Here's A Guy Volumetrics <{sender}>"
     msg["To"] = sender
     if bcc:
         msg["Bcc"] = ", ".join(bcc)
@@ -80,8 +80,11 @@ def build(season: int, week: int, url: str, sender: str, bcc: list[str], note: s
     items = "".join(f"<li style='margin:4px 0'>{html.escape(x)}</li>" for x in lines)
     msg.add_alternative(f"""\
 <div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#14171d">
-  <div style="background:#f6c945;border-radius:8px;padding:12px 16px;font-size:22px;font-weight:600;text-align:center">
-    📊 Week {week} VOLUMETRICS 📊</div>
+  <div style="background:#03050a;background-image:linear-gradient(135deg,#0b3a44 0%,#03050a 45%,#3a0a1e 100%);
+       border:1px solid #1d5c66;border-radius:12px;padding:18px 16px;text-align:center">
+    <div style="color:#8ff6ff;font-size:12px;letter-spacing:.3em;font-weight:600">WELL HERE&#8217;S A GUY</div>
+    <div style="color:#ffffff;font-size:30px;font-weight:800;letter-spacing:.02em;margin-top:4px">VOLUMETRICS</div>
+    <div style="color:#ff9fc4;font-size:12px;letter-spacing:.2em;margin-top:6px">WEEK {week}</div></div>
   <p style="font-size:16px;line-height:1.5">Target share and snap % for every team, with a take under each one.</p>
   <p style="text-align:center;margin:20px 0">
     <a href="{html.escape(url)}" style="background:#14171d;color:#fff;text-decoration:none;padding:12px 22px;

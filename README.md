@@ -1,4 +1,4 @@
-# Volumetrics
+# Well Here's A Guy Volumetrics
 
 Weekly NFL usage cards: a **target-share donut** and a **snap % bar chart** for every team,
 with a short spoken-style **take** underneath each one. Runs itself every Tuesday on GitHub
@@ -74,6 +74,24 @@ python run_weekly.py --teams CAR DAL --embed # a few teams + one self-contained 
 | Who owns the backfield | each back's share of RB carries + targets | | workhorse vs. committee, plus RB1's carries inside the 5 |
 
 Team logos are the dots; quadrant lines sit at the league median.
+
+## Risers & Fallers: evidence, not just usage (`volumetrics/evidence.py`)
+
+Every move is checked against the stats that confirm a real role change, comparing the first and
+second half of each team's window, and graded **Strong / Solid / Thin**. Only Strong or Solid moves
+get Waiver add / Buy / Sell; thin or mixed ones are tagged Watch. Each card lists the stats behind it.
+
+- **WR / TE:** snap share, air yards share (deeper looks, counted only when it outpaces target share),
+  end-zone targets, targets per route and yards per route (est.). WOPR is shown but not counted, since
+  it moves with target share.
+- **RB:** snap share, goal-line and red-zone carry share, targets per game, yards after contact and
+  broken tackles (PFR), expected points per game.
+- **Routes are estimated** (snap share x team dropbacks): route participation isn't public for 2026.
+
+## Add it to your home screen
+
+The site ships a web-app manifest and icons, so "Add to Home Screen" on iPhone (Share menu) or
+Android opens it full-screen like an app.
 
 ## How the numbers are defined (`volumetrics/data.py`)
 
