@@ -33,7 +33,7 @@ CSS = """
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
       color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:calc(58px + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%%}
+html{scroll-padding-top:calc(112px + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%%}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 Jost,"Avenir Next",Futura,system-ui,sans-serif;
      -webkit-font-smoothing:antialiased}
 a{color:inherit}
@@ -89,15 +89,17 @@ a{color:inherit}
 
 /* Sticky bar: view tabs + team chips */
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 92%%,transparent);
-     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:16px -18px 0;padding:9px 0 9px 18px;
-     border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.tabs{display:none;flex:none;background:var(--raise);border:1px solid var(--line);border-radius:999px;padding:3px}
-.js .tabs{display:flex}
-.tabs button{font:inherit;font-size:14px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:999px;
-             padding:6px 12px;cursor:pointer;white-space:nowrap}
+     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:16px -18px 0;padding:8px 18px 8px;
+     border-bottom:1px solid var(--line)}
+.tabs{display:none;background:var(--raise);border:1px solid var(--line);border-radius:12px;padding:3px;
+      grid-template-columns:repeat(var(--n,4),1fr);gap:2px}
+.js .tabs{display:grid}
+.tabs button{font:inherit;font-size:14.5px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:9px;
+             padding:8px 6px;cursor:pointer;white-space:nowrap}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
 .tabs button:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
-nav{overflow-x:auto;white-space:nowrap;scrollbar-width:none;flex:1;min-width:0;padding-right:18px}
+nav{overflow-x:auto;white-space:nowrap;scrollbar-width:none;margin:8px -18px 0;padding:0 18px}
+nav[hidden]{display:none}
 nav::-webkit-scrollbar{display:none}
 nav a{display:inline-flex;align-items:center;justify-content:center;color:var(--muted);text-decoration:none;
       font-weight:500;font-size:14px;height:38px;min-width:46px;padding:0 10px;border-radius:999px;
@@ -108,6 +110,59 @@ nav a[aria-current="true"]{color:var(--ink);border-color:var(--team);background:
       box-shadow:0 0 14px color-mix(in srgb,var(--team) 45%%,transparent)}
 nav a:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
 .panel-h{font-size:15px;font-weight:500;color:var(--muted);margin:22px 0 0;text-align:center}
+
+/* RB leaderboard */
+.lb{margin:20px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;background:var(--raise);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{font:inherit;font-size:14px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:8px;padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
+.lb-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.lb-top h3{margin:0;font-size:15px;font-weight:500;color:var(--muted)}
+.tbl{margin-top:10px;overflow-x:auto;border:1px solid var(--line);border-radius:12px;max-height:70vh;overflow-y:auto;
+     -webkit-overflow-scrolling:touch}
+.tbl[hidden]{display:none}
+table.lbt{border-collapse:separate;border-spacing:0;width:100%%;font-size:14px;font-variant-numeric:tabular-nums}
+.lbt th,.lbt td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+.lbt thead th{position:sticky;top:0;background:var(--raise);z-index:2;font-weight:500;color:var(--muted);font-size:12.5px}
+.lbt thead th button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.lbt thead th[aria-sort] button{color:var(--ink)}
+.lbt thead th[aria-sort="descending"] button::after{content:" ↓"}
+.lbt thead th[aria-sort="ascending"] button::after{content:" ↑"}
+.lbt .pl{text-align:left;position:sticky;left:0;background:var(--bg);z-index:1;min-width:9.5em}
+.lbt thead .pl{z-index:3;background:var(--raise)}
+.lbt .pl a{text-decoration:none;display:flex;align-items:center;gap:8px;font-weight:500;color:var(--ink)}
+.lbt .pl img{width:20px;height:20px;object-fit:contain;flex:none}
+.lbt td.hi{color:var(--ink);font-weight:600}
+.lbt tbody tr:hover td,.lbt tbody tr:hover .pl{background:var(--raise)}
+.lb-note{color:var(--faint);font-size:13px;margin:8px 2px 0;line-height:1.5}
+
+/* Movers */
+.mv-intro{color:var(--muted);font-size:15px;margin:10px 0 0;max-width:62ch}
+.filters{display:flex;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+.filters button{font:inherit;font-size:14px;font-weight:500;color:var(--muted);background:none;border:1px solid var(--line);
+     border-radius:999px;padding:6px 14px;cursor:pointer}
+.filters button[aria-pressed="true"]{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.filters button:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
+.mv-h{display:flex;align-items:center;gap:8px;font:800 24px/1 "Big Shoulders",Impact,sans-serif;letter-spacing:.04em;
+      text-transform:uppercase;margin:22px 0 6px}
+.mv-h.up{color:#3fe3f0}.mv-h.down{color:#ff4d86}
+ol.movers{list-style:none;margin:0;padding:0}
+.movers li{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.movers li[hidden]{display:none}
+.movers .av{width:56px;height:56px;border-radius:50%%;display:block;box-shadow:0 0 0 2px var(--team)}
+.mv-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mv-name{font-weight:600;font-size:17px}
+.mv-tag{font-size:12px;font-weight:600;letter-spacing:.02em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.tag-waiver{background:#16d6e8;color:#04161a}.tag-buy{background:#3ddc97;color:#04170e}
+.tag-buylow{background:#ffb02e;color:#1f1300}.tag-sell{background:#ff4d86;color:#22030d}.tag-watch{background:#2a3040;color:var(--ink)}
+.mv-sub{color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:6px;margin-top:1px}
+.mv-sub img{width:18px;height:18px;object-fit:contain}
+.mv-stat{font-size:15px;margin-top:4px}
+.mv-d{font-weight:600;margin-left:4px}.mv-d.up{color:#3fe3f0}.mv-d.down{color:#ff4d86}
+.mv-meta{color:var(--muted);font-size:13px;margin-top:2px}
+.spark{width:84px;height:40px;display:block}
+.mv-empty{color:var(--muted);font-size:15px;padding:10px 0}
 
 /* Week-by-week table under each last-4 card */
 .trend{width:100%%;border-collapse:separate;border-spacing:3px;margin:14px 0 0;font-size:14.5px;
@@ -141,9 +196,8 @@ footer{color:var(--faint);font-size:13px;margin-top:28px;line-height:1.6}
 @media (max-width:720px){
   .wrap{padding:0 14px 48px}
   .hero{margin:0 -14px;border-radius:0;padding:28px 18px 24px}
-  .bar{margin:16px -14px 0;padding:9px 0 9px 14px;gap:8px}
-  .tabs button{padding:6px 10px}
-  nav{padding-right:14px}
+  .bar{margin:16px -14px 0;padding:8px 14px}
+  nav{margin:8px -14px 0;padding:0 14px}
   section{padding:18px 0 20px}
   .card{margin:0 -14px;border-radius:0}
   .take{font-size:17.5px;margin-top:16px}
@@ -153,26 +207,43 @@ footer{color:var(--faint);font-size:13px;margin-top:28px;line-height:1.6}
 """
 
 JS = """
-(()=>{const panels={wk:document.getElementById('p-wk'),l4:document.getElementById('p-l4')};
+(()=>{const panels={};document.querySelectorAll('.panel').forEach(p=>panels[p.id.slice(2)]=p);
 const tabs=[...document.querySelectorAll('.tabs button')];const nav=document.querySelector('nav');
 const chips=[...nav.querySelectorAll('a')];const chip=t=>chips.find(a=>a.dataset.team===t);
 const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;let view='wk',cur=null;
-const sec=(t,v)=>document.getElementById(v==='l4'?t+'-l4':t);
+const sec=(t,v)=>document.getElementById(v==='wk'?t:t+'-'+v);
 function mark(t){const a=chip(t);if(!a||a===cur)return;if(cur)cur.removeAttribute('aria-current');
  a.setAttribute('aria-current','true');cur=a;nav.scrollTo({left:a.offsetLeft-nav.offsetLeft-nav.clientWidth/2+a.clientWidth/2,behavior:rm?'auto':'smooth'});}
-function show(v,keepTeam){if(!panels[v])return;view=v;for(const k in panels){if(panels[k])panels[k].hidden=k!==v;}
- tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));
- const t=keepTeam&&cur?cur.dataset.team:null;const target=t?sec(t,v):panels[v];
- if(target)target.scrollIntoView({block:'start'});history.replaceState(null,'',v==='l4'?(t?'#'+t+'-l4':'#l4'):(t?'#'+t:'#'));}
+function apply(v){view=v;for(const k in panels)panels[k].hidden=k!==v;
+ tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));nav.hidden=(v==='mv');}
+function show(v,keepTeam){if(!panels[v])return;apply(v);
+ const t=keepTeam&&cur&&v!=='mv'?cur.dataset.team:null;const target=(t&&sec(t,v))||panels[v];
+ target.scrollIntoView({block:'start'});history.replaceState(null,'',t&&sec(t,v)?'#'+sec(t,v).id:(v==='wk'?'#':'#'+v));}
 tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.view,true)));
 chips.forEach(a=>a.addEventListener('click',e=>{const s=sec(a.dataset.team,view);if(!s)return;e.preventDefault();
  s.scrollIntoView({behavior:rm?'auto':'smooth',block:'start'});history.replaceState(null,'','#'+s.id);mark(a.dataset.team);}));
 const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)mark(e.target.dataset.team);},
  {rootMargin:'-35% 0px -60% 0px'});document.querySelectorAll('section[data-team]').forEach(s=>io.observe(s));
-const h=location.hash.slice(1);const start=(h==='l4'||h.endsWith('-l4'))&&panels.l4?'l4':'wk';
-for(const k in panels){if(panels[k])panels[k].hidden=k!==start;}view=start;
-tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===start?'true':'false'));
-if(h&&h!=='l4'){const s=document.getElementById(h);if(s)s.scrollIntoView({block:'start'});}})();
+document.querySelectorAll('a[href^="#"]:not(nav a)').forEach(a=>a.addEventListener('click',e=>{const id=a.hash.slice(1);
+ const el=document.getElementById(id);if(!el)return;const p=el.closest('.panel');if(p&&p.hidden){apply(p.id.slice(2));}}));
+/* sortable tables: tap a column header */
+document.querySelectorAll('table.sortable').forEach(tb=>{const ths=[...tb.tHead.rows[0].cells];
+ ths.forEach((th,i)=>{const b=th.querySelector('button');if(!b)return;b.addEventListener('click',()=>{
+  const dir=th.getAttribute('aria-sort')==='descending'?'ascending':'descending';ths.forEach(x=>x.removeAttribute('aria-sort'));
+  th.setAttribute('aria-sort',dir);const rows=[...tb.tBodies[0].rows];const val=r=>{const c=r.cells[i];const v=parseFloat(c.dataset.v);return isNaN(v)?-1e9:v;};
+  rows.sort((x,y)=>dir==='descending'?val(y)-val(x):val(x)-val(y));rows.forEach(r=>tb.tBodies[0].appendChild(r));});});});
+/* segmented toggles (RB table: this week / last 4) */
+document.querySelectorAll('.seg').forEach(g=>{const bs=[...g.querySelectorAll('button')];bs.forEach(b=>b.addEventListener('click',()=>{
+ bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));const root=g.closest('.lb');
+ root.querySelectorAll('.tbl').forEach(t=>t.hidden=t.dataset.lb!==b.dataset.lb);}));});
+/* movers position filter */
+document.querySelectorAll('.filters').forEach(g=>{const bs=[...g.querySelectorAll('button')];const root=g.closest('.panel');
+ const run=pos=>{root.querySelectorAll('ol.movers').forEach(ol=>{let shown=0;ol.querySelectorAll('li').forEach(li=>{
+  const ok=pos==='all'?li.dataset.all==='1':(li.dataset.pos===pos&&+li.dataset.pr<=8);li.hidden=!ok;if(ok)shown++;});
+  const em=ol.nextElementSibling;if(em&&em.classList.contains('mv-empty'))em.hidden=shown>0;});};
+ bs.forEach(b=>b.addEventListener('click',()=>{bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));run(b.dataset.pos);}));run('all');});
+const h=location.hash.slice(1);let start='wk';if(panels[h])start=h;else{const m=h.match(/-(l4|rb)$/);if(m&&panels[m[1]])start=m[1];}
+apply(start);if(h&&!panels[h]){const s=document.getElementById(h);if(s)s.scrollIntoView({block:'start'});}})();
 """
 
 
@@ -265,8 +336,146 @@ def _trend_html(trend: dict | None) -> str:
         body += (f'<tr><th scope="row">{html.escape(r["name"])}</th>{cells}'
                  f'<td class="tot">{r["total"]:.0%}</td></tr>')
     return (f'<table class="trend"><caption class="sr">Target share by week</caption>'
-            f'<thead><tr><th scope="col" style="text-align:left">Target share</th>{head}'
+            f'<thead><tr><th scope="col" style="text-align:left">{html.escape(trend.get("label", "Target share"))}</th>{head}'
             f'<th scope="col">All</th></tr></thead><tbody>{body}</tbody></table>')
+
+
+
+LB_COLS = (  # (header, key, kind, tooltip)
+    ("Snap %", "snap", "pct", "Share of the team's offensive snaps"),
+    ("Rush %", "rush", "pct", "Share of the team's carries (designed runs)"),
+    ("Tgt %", "tgt_share", "pct", "Share of the team's targets"),
+    ("Opp %", "opp", "pct", "Backfield share: his carries + targets / all RB carries + targets"),
+    ("Car", "car", "int", "Carries"),
+    ("Tgts", "tgt", "int", "Targets"),
+    ("HVT", "hvt", "int", "High-value touches: catches + carries inside the 10"),
+    ("GL", "gl", "int", "Carries inside the 5"),
+    ("xFP", "xfp", "dec", "Expected PPR points from his usage (nflverse model)"),
+    ("PPR", "fp", "dec", "Actual PPR points"),
+)
+
+
+def _lb_table(rows: list[dict], logos: dict, per_game: bool, limit: int = 40) -> str:
+    rows = sorted(rows, key=lambda r: -(r["xfp"] if r["xfp"] is not None else -1))[:limit]
+    head = '<th scope="col" class="pl">RB</th>'
+    for h, k, kind, tip in LB_COLS:
+        label = h + ("/g" if per_game and k in ("xfp", "fp") else "")
+        sort = ' aria-sort="descending"' if k == "xfp" else ""
+        head += f'<th scope="col"{sort} title="{html.escape(tip)}"><button type="button">{label}</button></th>'
+    if per_game:
+        head += '<th scope="col" title="Games played"><button type="button">G</button></th>'
+    body = ""
+    for r in rows:
+        cells = ""
+        for _, k, kind, _ in LB_COLS:
+            v = r.get(k)
+            if v is None:
+                cells += '<td data-v="">\u2013</td>'
+                continue
+            txt = f"{v:.0%}" if kind == "pct" else (f"{v:.1f}" if kind == "dec" else f"{v}")
+            hi = ' class="hi"' if k == "xfp" else ""
+            cells += f'<td data-v="{v}"{hi}>{txt}</td>'
+        if per_game:
+            cells += f'<td data-v="{r.get("games") or 0}">{r.get("games") or 0}</td>'
+        body += (f'<tr><th scope="row" class="pl"><a href="#{r["team"]}-rb" title="{html.escape(r["full_name"])}">'
+                 f'{_logo_img(r["team"], logos, 20)}{html.escape(r["name"])}</a></th>{cells}</tr>')
+    return f'<table class="lbt sortable"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
+
+
+def _rb_panel(p: dict, week: int, embed: bool, logos: dict) -> str:
+    n = p.get("n", 4)
+    lb = (
+        '<div class="lb"><div class="lb-top"><h3>RB usage, every team</h3>'
+        '<div class="seg" role="group" aria-label="Table view">'
+        f'<button type="button" data-lb="wk" aria-pressed="true">Week {week}</button>'
+        f'<button type="button" data-lb="l4" aria-pressed="false">Last {n}</button></div></div>'
+        f'<div class="tbl" data-lb="wk">{_lb_table(p["lb_wk"], logos, False)}</div>'
+        f'<div class="tbl" data-lb="l4" hidden>{_lb_table(p["lb_l4"], logos, True)}</div>'
+        '<p class="lb-note">Tap a column to sort; tap a back to jump to his team. Sorted by xFP: the PPR points an '
+        'average back would score on that workload, the best single read on RB value. Opp % is his share of '
+        'the backfield\'s carries and targets. HVT = catches plus carries inside the 10. GL = carries inside the 5.</p></div>'
+    )
+    return lb + _sections(p["entries"], week, embed, "-rb")
+
+
+def _spark(series: list, up: bool) -> str:
+    pts = [(i, v) for i, v in enumerate(series)]
+    n = max(len(series) - 1, 1)
+    vals = [v for _, v in pts if v is not None]
+    hi = max(vals + [0.01])
+    color = "#3fe3f0" if up else "#ff4d86"
+    xy = lambda i, v: (4 + 76 * i / n, 36 - 30 * (v / hi))  # noqa: E731
+    segs, cur = [], []
+    for i, v in pts:
+        if v is None:
+            if cur:
+                segs.append(cur)
+            cur = []
+        else:
+            cur.append(xy(i, v))
+    if cur:
+        segs.append(cur)
+    lines = "".join(
+        f'<polyline points="{" ".join(f"{x:.1f},{y:.1f}" for x, y in sg)}" fill="none" stroke="{color}" '
+        f'stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' for sg in segs if len(sg) > 1)
+    dots = "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="{color}"/>' for sg in segs for x, y in sg)
+    miss = "".join(f'<circle cx="{xy(i, 0)[0]:.1f}" cy="36" r="2.4" fill="none" stroke="#5f6775"/>'
+                   for i, v in pts if v is None)
+    return (f'<svg class="spark" viewBox="0 0 84 40" role="img" aria-label="Game by game">'
+            f'<line x1="2" y1="37" x2="82" y2="37" stroke="#262b35"/>{lines}{dots}{miss}</svg>')
+
+
+TAG_CLASS = {"Waiver add": "tag-waiver", "Buy": "tag-buy", "Buy low": "tag-buylow", "Sell": "tag-sell", "Watch": "tag-watch"}
+
+
+def _movers_list(items: list[dict], logos: dict, up: bool, embed: bool) -> str:
+    lis = ""
+    for it in items:
+        m = it["m"]
+        arrow, cls = ("\u25B2", "up") if up else ("\u25BC", "down")
+        d = round(abs(m.delta) * 100)
+        snap = (f"Snaps {m.snap_before:.0%} \u2192 {m.snap_after:.0%}"
+                if m.snap_before is not None and m.snap_after is not None else "")
+        xfp = (f"xFP/g {m.xfp_before:.1f} \u2192 {m.xfp_after:.1f}"
+               if m.xfp_before is not None and m.xfp_after is not None else "")
+        meta = " \u00b7 ".join(x for x in (snap, xfp) if x)
+        src = it["avatar"]
+        if embed:
+            src = "data:image/webp;base64," + base64.b64encode(Path(it["avatar_path"]).read_bytes()).decode()
+        anchor = f"#{m.team}-l4"
+        lis += (
+            f'<li data-pos="{m.position}" data-all="{1 if it["all"] else 0}" data-pr="{it["pos_rank"]}" '
+            f'style="--team:{m.color}">'
+            f'<img class="av" src="{src}" alt="" width="56" height="56" loading="lazy">'
+            f'<div><div class="mv-top"><a class="mv-name" href="{anchor}" style="text-decoration:none">'
+            f'{html.escape(m.player.name)}</a>'
+            f'<span class="mv-tag {TAG_CLASS.get(m.tag, "tag-watch")}">{m.tag}</span></div>'
+            f'<div class="mv-sub">{m.position} \u00b7 {_logo_img(m.team, logos, 18)}{m.team}</div>'
+            f'<div class="mv-stat">{m.metric} <b>{m.before:.0%} \u2192 {m.after:.0%}</b>'
+            f'<span class="mv-d {cls}">{arrow}{d}</span></div>'
+            f'<div class="mv-meta">{meta}</div></div>'
+            f'{_spark(m.series, up)}</li>'
+        )
+    return f'<ol class="movers">{lis}</ol><p class="mv-empty" hidden>Nobody at this position moved enough to make the list.</p>'
+
+
+def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
+    n = p.get("n", 4)
+    k = n // 2
+    return (
+        f'<p class="mv-intro">Whose role grew or shrank across each team\'s last {n} games: the last {k} vs the first '
+        f'{k}, counting only games he played. Receivers and tight ends by target share, running backs by backfield '
+        f'share (carries plus targets). Tags come from usage alone, so check who\'s available in your league.</p>'
+        '<div class="filters" role="group" aria-label="Position">'
+        + "".join(f'<button type="button" data-pos="{v}" aria-pressed="{"true" if v == "all" else "false"}">{lbl}</button>'
+                  for v, lbl in (("all", "All"), ("RB", "RB"), ("WR", "WR"), ("TE", "TE")))
+        + '</div>'
+        f'<h3 class="mv-h up">\u25B2 Risers</h3>{_movers_list(p["risers"], logos, True, embed)}'
+        f'<h3 class="mv-h down">\u25BC Fallers</h3>{_movers_list(p["fallers"], logos, False, embed)}'
+        '<p class="lb-note">Waiver add: barely used early, real role now. Buy: already had a role and it grew. '
+        'Buy low: looks dropped but he\'s still on the field. Sell: snaps and looks both shrinking. '
+        'Players who missed the latest game are left out, since that\'s an injury question, not a role change.</p>'
+    )
 
 
 def _sections(entries: list[dict], week: int, embed: bool, suffix: str) -> str:
@@ -317,11 +526,17 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
     )
     body = ""
     for p in panels:
-        suffix = "" if p["key"] == "wk" else f"-{p['key']}"
+        kind = p.get("kind", "cards")
+        if kind == "rb":
+            inner = _rb_panel(p, week, embed, logos)
+        elif kind == "mv":
+            inner = _movers_panel(p, logos, embed)
+        else:
+            suffix = "" if p["key"] == "wk" else f"-{p['key']}"
+            inner = (f'{_leaders_html(p.get("leaders"), p.get("leaders_title", ""), logos)}'
+                     f'{_sections(p["entries"], week, embed, suffix)}')
         body += (f'<div class="panel" id="p-{p["key"]}" role="tabpanel" aria-label="{html.escape(p["label"])}">'
-                 f'<h2 class="panel-h">{html.escape(p.get("heading", p["label"]))}</h2>'
-                 f'{_leaders_html(p.get("leaders"), p.get("leaders_title", ""), logos)}'
-                 f'{_sections(p["entries"], week, embed, suffix)}</div>')
+                 f'<h2 class="panel-h">{html.escape(p.get("heading", p["label"]))}</h2>{inner}</div>')
 
     miss = ""
     if missing:
@@ -340,10 +555,12 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
 <style>{css}</style></head>
 <body><div class="wrap">
 {hero(f"Week {week}", f"{season} Season", "Target share and snap % for every team")}
-<div class="bar"><div class="tabs" role="tablist" aria-label="View">{tabs}</div>
+<div class="bar"><div class="tabs" role="tablist" aria-label="View" style="--n:{len(panels)}">{tabs}</div>
 <nav aria-label="Jump to a team">{nav}</nav></div>
 <main>{body}</main>
 <footer>{miss}
+<p>RB numbers: rush share counts designed runs (no QB scrambles or kneels). xFP is nflverse's expected PPR points
+model (ffopportunity). High-value touches follow Ben Gretch's definition (catches plus carries inside the 10).</p>
 <p>"Last 4 games" adds up each team's four most recent games (bye weeks skipped), so the oldest game drops off
 each week. Shares there are totals over those games; a game a player missed counts as zero.</p>
 <p>Targets, red-zone targets and receiving lines from nflverse play-by-play. Snap counts from Pro Football Reference

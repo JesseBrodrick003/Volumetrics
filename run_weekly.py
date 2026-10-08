@@ -31,8 +31,9 @@ from pathlib import Path
 from volumetrics import data as D
 from matplotlib.colors import to_hex
 
-from volumetrics.charts import FONT_DIR, accent, fetch_image, render_cards
-from volumetrics.insights import detect_signals, detect_window_signals, write_take
+from volumetrics.charts import FONT_DIR, accent, avatar, fetch_image, render_cards
+from volumetrics import movers as M
+from volumetrics.insights import detect_rb_signals, detect_signals, detect_window_signals, write_take
 from volumetrics.narrator import narrate
 from volumetrics.report import build_index, build_page
 
@@ -134,12 +135,15 @@ def main(argv=None) -> int:
         all_teams = sorted(set(D.load_season(season)["snaps"].filter(D.pl.col("week") <= week)["team"].to_list()))
         wanted_l4 = [t for t in all_teams if not a.teams or t in wanted]
         jobs = [("l4", season, week, t, out_dir, a.brand, use_llm, a.window) for t in wanted_l4]
+        movers_all, lb_l4 = [], []
         for team, res in zip(wanted_l4, _run_parallel(jobs)):
             if res is None:
                 continue
             entries_l4.append(res["entry"])
             rows_l4.extend(res["rows"])
             takes_l4[team] = res["take"]
+            movers_all.extend(res.get("movers", []))
+            lb_l4.extend(res.get("lb", []))
             log.info("%-3s last-%d done (%s)", team, len(res["take"]["weeks"]), res["take"]["source"])
         entries_l4.sort(key=lambda e: e["team_name"])
         color_l4 = {e["team"]: e["color"] for e in entries_l4}
@@ -153,6 +157,46 @@ def main(argv=None) -> int:
             panels.append({"key": "l4", "label": f"Last {n}", "heading": f"Last {n} games played",
                            "entries": entries_l4, "leaders": leaders_l4,
                            "leaders_title": f"Top target shares, last {n} games"})
+
+        # ---- RB tab: this week's backfields + a sortable league-wide RB table ----
+        rb_entries, lb_wk, takes_rb = [], [], {}
+        jobs = [("rb", season, week, t, out_dir, a.brand, use_llm, a.window) for t in todo]
+        for team, res in zip(todo, _run_parallel(jobs)):
+            if res is None:
+                continue
+            rb_entries.append(res["entry"])
+            lb_wk.extend(res.get("lb", []))
+            takes_rb[team] = res["take"]
+            log.info("%-3s backfield done", team)
+        rb_entries.sort(key=lambda e: e["team_name"])
+        if rb_entries:
+            n_l4 = max((len(t["weeks"]) for t in takes_l4.values()), default=a.window)
+            panels.append({"key": "rb", "label": "RBs", "heading": "Running backs", "kind": "rb",
+                           "entries": rb_entries, "lb_wk": lb_wk, "lb_l4": lb_l4, "n": n_l4})
+
+        # ---- Movers tab: biggest risers and fallers across the league ----
+        risers, fallers = M.rank(movers_all)
+        if risers or fallers:
+            av_dir = out_dir / "img" / "movers"
+            av_dir.mkdir(parents=True, exist_ok=True)
+            for item in risers + fallers:
+                m = item["m"]
+                path = av_dir / f"{m.key}.webp"
+                if not path.exists():
+                    from PIL import Image
+                    from matplotlib.colors import to_rgb as _rgb
+                    Image.fromarray(avatar(m.player, _rgb(m.color), px=144)).save(path, "WEBP", quality=88)
+                item["avatar"] = f"img/movers/{path.name}"
+                item["avatar_path"] = path
+            n_l4 = max((len(t["weeks"]) for t in takes_l4.values()), default=a.window)
+            panels.append({"key": "mv", "label": "Movers", "heading": f"Risers & fallers, last {n_l4} games",
+                           "kind": "mv", "entries": [], "risers": risers, "fallers": fallers, "n": n_l4})
+            (out_dir / "movers.json").write_text(json.dumps({
+                k: [{"player": i["m"].player.full_name, "team": i["m"].team, "pos": i["m"].position,
+                     "metric": i["m"].metric, "before": round(i["m"].before, 4), "after": round(i["m"].after, 4),
+                     "snap_before": i["m"].snap_before, "snap_after": i["m"].snap_after,
+                     "xfp_before": i["m"].xfp_before, "xfp_after": i["m"].xfp_after, "tag": i["m"].tag}
+                    for i in v] for k, v in (("risers", risers), ("fallers", fallers))}, indent=2))
 
     source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"
     logo_paths = team_logos([e for p in panels for e in p["entries"]], a.out)
@@ -168,7 +212,8 @@ def main(argv=None) -> int:
                 wr = csv.DictWriter(fh, fieldnames=list(data[0].keys()))
                 wr.writeheader()
                 wr.writerows(data)
-    (out_dir / "takes.json").write_text(json.dumps({"week": takes, f"last{a.window}": takes_l4}, indent=2))
+    (out_dir / "takes.json").write_text(json.dumps(
+        {"week": takes, f"last{a.window}": takes_l4, "rb": locals().get("takes_rb", {})}, indent=2))
 
     # fonts for the hosted pages
     assets = a.out / "assets" / "fonts"
@@ -214,20 +259,47 @@ def _logo_srcs(paths: dict[str, Path], embed: bool) -> dict[str, str]:
     return {t: "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode() for t, p in paths.items()}
 
 
+def _lb_row(p, tw, team, games: int | None = None) -> dict:
+    """One RB leaderboard row. Counts are totals; xFP/FP are per game in the window view."""
+    g = max(games or 1, 1)
+    return {
+        "team": team, "name": p.name, "full_name": p.full_name, "pos": p.position,
+        "snap": p.snap_pct, "rush": p.rush_share, "tgt_share": p.tgt_share, "opp": p.bf_share,
+        "car": p.carries, "tgt": p.targets, "hvt": p.hvt, "gl": p.gl_carries, "yds": p.rush_yds,
+        "xfp": None if p.xfp is None else p.xfp / g, "fp": None if p.fp is None else p.fp / g,
+        "games": games,
+    }
+
+
 def _team_job(job):
     """One team, one view: the numbers and the take (fast, main process). Cards are rendered
-    afterwards in parallel by render_cards()."""
+    afterwards in parallel by render_cards().
+    Views: wk = this week's targets, l4 = rolling window, rb = this week's backfield."""
     view, season, week, team, out_dir, brand, use_llm, n = job
+    extra = {}
     if view == "wk":
         tw = D.build_team_week(season, week, team)
         if tw is None or tw.total_targets == 0:
             return None
-        sub, take = "", write_take(tw, detect_signals(tw))
-    else:
+        sub, kind, take = "", "targets", write_take(tw, detect_signals(tw))
+    elif view == "l4":
         tw = D.build_team_window(season, week, team, n=n)
         if tw is None or tw.n < 2 or tw.total_targets == 0:
             return None
-        sub, take = "l4/", write_take(tw, detect_window_signals(tw))
+        sub, kind, take = "l4/", "targets", write_take(tw, detect_window_signals(tw))
+        extra["movers"] = M.candidates(tw, to_hex(accent(tw.colors)))
+        extra["lb"] = [_lb_row(p, tw, team, games=p.games) for p in tw.rbs() if p.carries + p.targets >= 4]
+    else:  # rb
+        tw = D.build_team_week(season, week, team)
+        if tw is None or not tw.rbs():
+            return None
+        w = D.build_team_window(season, week, team, n=n)
+        sub, kind, take = "rb/", "rb", write_take(tw, detect_rb_signals(tw, w), fallback="carries")
+        extra["lb"] = [_lb_row(p, tw, team) for p in tw.rbs() if p.carries + p.targets >= 3]
+        extra["trend"] = ({"weeks": w.weeks, "label": "Rush share",
+                           "rows": [{"name": p.name, "shares": p.wk_rush, "total": p.rush_share}
+                                    for p in w.rbs()[:4] if p.carries]}
+                          if w and w.n >= 2 else None)
     if use_llm:
         take = narrate(tw, take)
     img_m = out_dir / "img" / sub / f"{team}-m.webp"
@@ -241,17 +313,21 @@ def _team_job(job):
     take_rec = {"team_name": tw.team_name, "take": take.text, "source": take.source,
                 "signals": [{"key": s.key, "evidence": s.evidence} for s in take.signals]}
     rows = D.to_rows(tw)
-    if view != "wk":
-        entry["trend"] = {"weeks": tw.weeks, "rows": [{"name": p.name, "shares": p.wk_share, "total": p.tgt_share}
-                                                     for p in tw.by_targets()[:5]]}
+    if view == "l4":
+        entry["trend"] = {"weeks": tw.weeks, "label": "Target share",
+                          "rows": [{"name": p.name, "shares": p.wk_share, "total": p.tgt_share}
+                                   for p in tw.by_targets()[:5]]}
         take_rec["weeks"] = tw.weeks
         rows = [{**r, "window_weeks": "-".join(map(str, tw.weeks))} for r in rows]
-    return {"entry": entry, "rows": rows, "take": take_rec, "cards": [(tw, img_m, "portrait"), (tw, img, "landscape")]}
+    if view == "rb":
+        entry["trend"] = extra.get("trend")
+    return {"entry": entry, "rows": rows, "take": take_rec, **extra,
+            "cards": [(tw, img_m, "portrait", kind), (tw, img, "landscape", kind)]}
 
 
 def _run_parallel(jobs):
     results = [_team_job(j) for j in jobs]
-    cards = [(tw, path, layout, jobs[0][5]) for r in results if r for tw, path, layout in r["cards"]]
+    cards = [(tw, path, layout, jobs[0][5], kind) for r in results if r for tw, path, layout, kind in r["cards"]]
     render_cards(cards)
     for r in results:
         if r:

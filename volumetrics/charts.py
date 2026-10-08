@@ -328,7 +328,7 @@ def _background(fig, tw: TeamWeek, L: Layout):
     return logo
 
 
-def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout):
+def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout, kind: str = "targets"):
     F = L.font
     x0 = L.text_x[1]
     if logo is not None:
@@ -338,8 +338,9 @@ def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout):
         x0 = L.text_x[0]
     y_name, y_ts, y_sub = L.head_y
     fig.text(x0, y_name, tw.team_name, fontsize=F["team"], color=TEXT, weight="medium", va="top")
-    fig.text(x0, y_ts, tw.title, fontsize=F["ts"], color=accent(tw.colors), weight="medium", va="top")
-    fig.text(x0, y_sub, tw.subtitle, fontsize=F["sub"], color=MUTED, va="top")  # subscript
+    title, subtitle = (tw.rb_title, tw.rb_subtitle) if kind == "rb" else (tw.title, tw.subtitle)
+    fig.text(x0, y_ts, title, fontsize=F["ts"], color=accent(tw.colors), weight="medium", va="top")
+    fig.text(x0, y_sub, subtitle, fontsize=F["sub"], color=MUTED, va="top")  # subscript
 
     credit = "Data: nflverse (pbp, PFR snaps)" + (", FTN charting" if tw.drops_available else "")
     if L.footer:
@@ -350,9 +351,12 @@ def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout):
         fig.text(0.978, 0.932, credit, fontsize=F["credit"], color="#5d6573", ha="right", va="top")
 
 
-def _donut_slices(tw: TeamWeek):
-    ranked = tw.by_targets()
-    small = [p for p in ranked if p.tgt_share < MIN_SHARE_SOLO or p.targets <= 1]
+def _donut_slices(tw: TeamWeek, metric: str = "targets"):
+    if metric == "carries":
+        ranked, val, share = tw.by_carries(), (lambda p: p.carries), (lambda p: p.rush_share)
+    else:
+        ranked, val, share = tw.by_targets(), (lambda p: p.targets), (lambda p: p.tgt_share)
+    small = [p for p in ranked if share(p) < MIN_SHARE_SOLO or val(p) <= 1]
     solo = [p for p in ranked if p not in small]
     rest = small
     if len(rest) < MIN_POOL:
@@ -379,13 +383,17 @@ def _box_in_slice(cx, cy, w, h, theta1, theta2, ppd, pad_px=5):
     return True
 
 
-def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets, L: Layout, rest_n=0):
+def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets, L: Layout, rest_n=0,
+                 metric: str = "targets"):
     mid = math.radians((theta1 + theta2) / 2)
     text_c = DARK_TEXT if (p is not None and luminance(color) > 0.55) else TEXT
     sub_c = (0.15, 0.17, 0.2) if text_c == DARK_TEXT else (1, 1, 1, 0.62)
-    stat = f"{share:.0%} · {targets} tgt"
+    stat = f"{share:.0%} · {targets} {'car' if metric == 'carries' else 'tgt'}"
     if p is not None:
-        sub = f"{p.rz_targets} RZ" + (f" · {p.drops} drop{'s' if p.drops > 1 else ''}" if p.drops else "")
+        if metric == "carries":  # subscript: yards, plus goal-line carries when he got any
+            sub = f"{p.rush_yds} yds" + (f" · {p.gl_carries} GL" if p.gl_carries else "")
+        else:
+            sub = f"{p.rz_targets} RZ" + (f" · {p.drops} drop{'s' if p.drops > 1 else ''}" if p.drops else "")
         name = p.name
     else:
         sub, name = None, f"Other ({rest_n})"
@@ -467,7 +475,7 @@ def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets
         y -= size * 1.25 * pt / ppd
 
 
-def _donut(fig, tw: TeamWeek, colors: dict, L: Layout):
+def _donut(fig, tw: TeamWeek, colors: dict, L: Layout, metric: str = "targets"):
     # Square axes (in inches) so the ring is a true circle: the round headshots use
     # aspect="auto" images, which would otherwise stretch the donut into an oval.
     x, y, w, h = L.donut
@@ -480,25 +488,27 @@ def _donut(fig, tw: TeamWeek, colors: dict, L: Layout):
     ax.set_ylim(-lim, lim)
     ax.set_axis_off()
 
-    solo, rest = _donut_slices(tw)
-    slices = [(p, colors[p.name], p.targets) for p in solo]
+    val = (lambda p: p.carries) if metric == "carries" else (lambda p: p.targets)
+    solo, rest = _donut_slices(tw, metric)
+    slices = [(p, colors.get(p.name, to_rgb(OTHER_GRAY)), val(p)) for p in solo]
     if rest:
-        slices.append((None, to_rgb(OTHER_GRAY), sum(p.targets for p in rest)))
+        slices.append((None, to_rgb(OTHER_GRAY), sum(val(p) for p in rest)))
 
-    total = tw.total_targets or 1
+    total = (tw.team_carries if metric == "carries" else tw.total_targets) or 1
     angle = 90.0  # start at 12 o'clock, go clockwise, biggest first, "Other" last
     for p, col, n in slices:
         sweep = 360.0 * n / total
         t1, t2 = angle - sweep, angle
         ax.add_patch(Wedge((0, 0), R_OUT, t1, t2, width=R_OUT - R_IN, fc=col, ec=BG, lw=2.6, zorder=2))
-        _wedge_label(ax, p, col, t1, t2, n / total, n, L, rest_n=len(rest))
+        _wedge_label(ax, p, col, t1, t2, n / total, n, L, rest_n=len(rest), metric=metric)
         angle = t1
 
     F = L.font
     ax.add_patch(Circle((0, 0), R_IN - 0.015, fc=CENTER_FILL, ec="#272b34", lw=3, zorder=3))
-    ax.text(0, 0.045, f"{tw.total_targets}", ha="center", va="center", fontsize=F["center_num"], color=TEXT,
-            weight="medium", zorder=4)
-    ax.text(0, -0.135, "TARGETS", ha="center", va="center", fontsize=F["center_lbl"], color=MUTED, zorder=4)
+    ax.text(0, 0.045, f"{tw.team_carries if metric == 'carries' else tw.total_targets}", ha="center", va="center",
+            fontsize=F["center_num"], color=TEXT, weight="medium", zorder=4)
+    ax.text(0, -0.135, "CARRIES" if metric == "carries" else "TARGETS", ha="center", va="center",
+            fontsize=F["center_lbl"], color=MUTED, zorder=4)
 
 
 def _bars(fig, tw: TeamWeek, colors: dict, L: Layout):
@@ -536,18 +546,80 @@ def _bars(fig, tw: TeamWeek, colors: dict, L: Layout):
                 fontsize=F["names"], color="#c9ced6", clip_on=False)
 
 
-def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS", layout: Layout = LANDSCAPE) -> Path:
-    # One color per player, shared by donut and bars: target order first, then snap-only guys
-    order = [p.name for p in tw.by_targets()]
-    order += [p.name for p in tw.by_snaps() if p.name not in order]
+def _mix(c, t):
+    """Blend a color toward white by t (0..1)."""
+    r, g, b = to_rgb(c)
+    return (r + (1 - r) * t, g + (1 - g) * t, b + (1 - b) * t)
+
+
+RB_METRICS = (("SNAP", "snap_pct", 0.0), ("RUSH", "rush_share", 0.30), ("TGT", "tgt_share", 0.55))
+
+
+def _rb_bars(fig, tw: TeamWeek, colors: dict, L: Layout):
+    """One group per running back: snap %, rush share, target share side by side,
+    with the back's name and his high-value touches / expected points underneath."""
+    F = L.font
+    x0, ty, sy = L.snap_xy
+    fig.text(x0, ty, "RB Usage", fontsize=F["snap_title"], color=TEXT, weight="medium", va="top")
+    fig.text(x0, sy, tw.rb_bar_subtitle, fontsize=F["snap_sub"], color=MUTED, va="top")  # subscript
+
+    backs = [p for p in tw.rbs() if p.snap_pct >= 0.05 or p.carries >= 2][:4]
+    bx, by, bwid, bh = L.bars
+    lift = 0.07 if L.name == "portrait" else 0.10  # room for headshot, name and stats under the bars
+    ax = fig.add_axes((bx, by + lift, bwid, bh - lift))
+    n = max(len(backs), 1)
+    ax.set_xlim(-0.55, n - 0.45)
+    ax.set_ylim(0, 1.12)
+    ax.set_axis_off()
+    for lvl in (0, 0.25, 0.5, 0.75, 1.0):
+        ax.plot([-0.55, n - 0.45], [lvl, lvl], color=GRID, lw=1, zorder=0)
+        ax.text(-0.62, lvl, f"{lvl:.0%}", ha="right", va="center", fontsize=F["ytick"], color="#6b7380")
+
+    pt = fig.dpi / 72
+    ppy = ax.get_position().height * fig.get_figheight() * fig.dpi / 1.12
+    bw = 0.25
+    small = F["ytick"]
+    diam = L.bar_head * 0.72  # headshot sits under the group, above the name
+    for i, p in enumerate(backs):
+        base = colors.get(p.name, to_rgb(OTHER_GRAY))
+        for j, (lbl, attr, tint) in enumerate(RB_METRICS):
+            v = getattr(p, attr) or 0.0
+            x = i + (j - 1) * (bw + 0.03)
+            ax.add_patch(Rectangle((x - bw / 2, 0), bw, v, fc=_mix(base, tint), ec="none", zorder=2))
+            ax.text(x, v + 6 / ppy, f"{v:.0%}", ha="center", va="bottom", fontsize=F["pct"] * 0.82,
+                    color=TEXT, weight="medium", zorder=6)
+            ax.text(x, -6 / ppy, lbl, ha="center", va="top", fontsize=small * 0.85, color=MUTED, clip_on=False)
+        y = -(6 + small * 0.85 * pt * 1.35 + 6) / ppy  # below the SNAP / RUSH / TGT labels
+        _circle_image(ax, avatar(p, base), i, y - diam / 2 / ppy, diam, zorder=5)
+        y -= (diam + 4) / ppy
+        ax.text(i, y, p.name, ha="center", va="top", fontsize=F["names"], color="#dfe3e9",
+                weight="medium", clip_on=False)
+        y -= F["names"] * pt * 1.3 / ppy
+        extra = f"{p.carries} car · {p.hvt} HVT" + (f" · {p.xfp:.1f} xFP" if p.xfp is not None else "")
+        ax.text(i, y, extra, ha="center", va="top", fontsize=small, color=MUTED, clip_on=False)
+
+
+def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS", layout: Layout = LANDSCAPE,
+                kind: str = "targets") -> Path:
+    """kind="targets": target-share donut + snap % bars. kind="rb": carry-share donut + RB usage groups."""
+    if kind == "rb":
+        order = [p.name for p in tw.by_carries()]
+        order += [p.name for p in tw.rbs() if p.name not in order]
+    else:  # one color per player, shared by donut and bars: target order first, then snap-only guys
+        order = [p.name for p in tw.by_targets()]
+        order += [p.name for p in tw.by_snaps() if p.name not in order]
     pal = team_palette(tw.colors, max(len(order), 1))
     colors = {name: pal[i] for i, name in enumerate(order)}
 
     fig = plt.figure(figsize=layout.size, dpi=DPI, facecolor=BG)
     logo = _background(fig, tw, layout)
-    _header(fig, tw, logo, brand, layout)
-    _donut(fig, tw, colors, layout)
-    _bars(fig, tw, colors, layout)
+    _header(fig, tw, logo, brand, layout, kind)
+    if kind == "rb":
+        _donut(fig, tw, colors, layout, metric="carries")
+        _rb_bars(fig, tw, colors, layout)
+    else:
+        _donut(fig, tw, colors, layout)
+        _bars(fig, tw, colors, layout)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=DPI, facecolor=BG)
     plt.close(fig)
@@ -559,10 +631,11 @@ def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS", layout
 # has already used polars can deadlock. Workers only draw; all numbers come in ready-made.
 # --------------------------------------------------------------------------- #
 def _render_card(job) -> str:
-    tw, webp_path, layout, brand = job
+    tw, webp_path, layout, brand, *rest = job
+    kind = rest[0] if rest else "targets"
     webp_path = Path(webp_path)
     png = webp_path.with_suffix(".png")
-    render_team(tw, png, brand=brand, layout=PORTRAIT if layout == "portrait" else LANDSCAPE)
+    render_team(tw, png, brand=brand, layout=PORTRAIT if layout == "portrait" else LANDSCAPE, kind=kind)
     Image.open(png).convert("RGB").save(webp_path, "WEBP", quality=90, method=6)  # ~3x smaller than PNG
     png.unlink()
     return str(webp_path)

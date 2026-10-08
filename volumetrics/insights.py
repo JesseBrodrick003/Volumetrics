@@ -291,7 +291,7 @@ def detect_signals(tw: TeamWeek) -> list[Signal]:
 # --------------------------------------------------------------------------- #
 # 2. Template narration
 # --------------------------------------------------------------------------- #
-def write_take(tw: TeamWeek, signals: list[Signal], max_main: int = 3) -> Take:
+def write_take(tw: TeamWeek, signals: list[Signal], max_main: int = 3, fallback: str = "targets") -> Take:
     """Pick the strongest signals: one per player, one per signal type, max 3 + 1 add-on."""
     used_players: set[str] = set()
     used_keys: set[str] = set()
@@ -316,6 +316,13 @@ def write_take(tw: TeamWeek, signals: list[Signal], max_main: int = 3) -> Take:
         used_players |= names
         n_main += 1
 
+    if fallback == "carries":  # RB tab: anchor a thin take on the backfield split, not the receivers
+        r = tw.by_carries()
+        if n_main < 2 and len(r) >= 2 and r[0].name not in used_players:
+            chosen.insert(0, Signal("leaders", 1, r[0].name, "top two by carries",
+                                    f"{r[0].name} led the backfield with {r[0].carries} carries ({pct(r[0].rush_share)})"
+                                    f"{tw.span}, with {r[1].name} next at {r[1].carries} ({pct(r[1].rush_share)})."))
+        return Take(text=" ".join(s.line for s in chosen), signals=chosen)
     r = tw.by_targets()
     if n_main < 2 and len(r) >= 2 and r[0].name not in used_players:  # thin week: anchor on the leader
         chosen.insert(0, Signal("leaders", 1, r[0].name, "top two by targets",
@@ -474,4 +481,130 @@ def detect_window_signals(w: Window) -> list[Signal]:
         S.append(Signal("volume_low", 3, None, f"{per_game:.1f} team targets per game over {n}",
                         f"Only about {per_game:.0f} targets a game over the last {n}, which caps everyone's ceiling."))
 
+    return sorted(S, key=lambda s: -s.priority)
+
+
+# --------------------------------------------------------------------------- #
+# RB tab: backfield roles (what RB analysts look for: who has the volume, who has the
+# passing-down role, who gets the goal-line work, how many touches are high-value)
+# --------------------------------------------------------------------------- #
+RB_WORKHORSE_SNAP, RB_WORKHORSE_RUSH = 0.70, 0.65
+RB_COMMITTEE = 0.30  # two backs at 30%+ of carries
+RB_PASS_TGT, RB_PASS_RUSH_MAX = 0.10, 0.40
+RB_TREND = 0.15
+
+
+def detect_rb_signals(tw: TeamWeek, w: Window | None = None) -> list[Signal]:
+    S: list[Signal] = []
+    seed = (tw.season, tw.week, tw.team, "rb")
+    backs = tw.rbs()
+    if not backs:
+        return S
+    by_car = sorted(backs, key=lambda p: -p.carries)
+    lead = by_car[0]
+    two = by_car[1] if len(by_car) > 1 else None
+
+    # Role: workhorse or committee
+    if lead.snap_pct >= RB_WORKHORSE_SNAP and lead.rush_share >= RB_WORKHORSE_RUSH:
+        held = ""
+        if w and w.n >= 3:
+            wl = next((p for p in w.rbs() if p.name == lead.name), None)
+            if wl and wl.rush_share >= 0.6:
+                held = f" That's been his job all {w.n} games ({pct(wl.rush_share)} of the carries)."
+        S.append(Signal("workhorse", 9, lead.name,
+                        f"{lead.name}: {pct(lead.snap_pct)} snaps, {pct(lead.rush_share)} rush share",
+                        _pick([
+                            f"{lead.name} is a true workhorse: {pct(lead.snap_pct)} of the snaps and {pct(lead.rush_share)} "
+                            f"of the carries ({lead.carries}).{held}",
+                            f"No committee here. {lead.name} played {pct(lead.snap_pct)} of the snaps and took "
+                            f"{lead.carries} of {tw.team_carries} carries.{held}",
+                        ], *seed, "wh")))
+    elif two and lead.rush_share >= 0.50 and two.rush_share < RB_COMMITTEE:
+        S.append(Signal("lead_back", 7, lead.name,
+                        f"{lead.name}: {pct(lead.rush_share)} rush share, {pct(lead.snap_pct)} snaps",
+                        f"{lead.name} is the lead back ({lead.carries} carries, {pct(lead.rush_share)}) but not a workhorse: "
+                        f"he played {pct(lead.snap_pct)} of the snaps"
+                        + (f" and {two.name} still got {two.carries} carries." if two.carries >= 3 else ".")))
+    elif two and lead.rush_share >= RB_COMMITTEE and two.rush_share >= RB_COMMITTEE:
+        pass_back = max((lead, two), key=lambda p: (p.targets, p.snap_pct))
+        other = two if pass_back is lead else lead
+        extra = (f" {pass_back.name} has the passing-down edge with {pass_back.targets} targets to {other.targets}."
+                 if pass_back.targets > other.targets else "")
+        S.append(Signal("committee", 8, f"{lead.name}+{two.name}",
+                        f"{lead.name} {pct(lead.rush_share)} / {two.name} {pct(two.rush_share)} of carries",
+                        f"This is a committee: {lead.name} {pct(lead.rush_share)} of the carries, {two.name} "
+                        f"{pct(two.rush_share)}.{extra} Hard to trust either as more than a flex."))
+
+    # Passing-down specialist
+    for p in backs:
+        if p.tgt_share >= RB_PASS_TGT and p.rush_share <= RB_PASS_RUSH_MAX and p.targets >= 3:
+            S.append(Signal("pass_back", 6, p.name,
+                            f"{p.name}: {pct(p.tgt_share)} target share, {pct(p.rush_share)} rush share",
+                            f"{p.name} is the passing-down back: {p.targets} targets ({pct(p.tgt_share)} of the team's) "
+                            f"on {pct(p.snap_pct)} of the snaps. That's real value in PPR."))
+            break
+
+    # Goal-line role
+    gl = max(backs, key=lambda p: (p.gl_carries, p.carries))
+    if gl.gl_carries >= 2 or (tw.team_gl_carries >= 2 and gl.gl_carries / tw.team_gl_carries >= 0.67):
+        S.append(Signal("goal_line", 7, gl.name, f"{gl.name}: {gl.gl_carries} of {tw.team_gl_carries} carries inside the 5",
+                        f"{gl.name} also got {_of_team(gl.gl_carries, tw.team_gl_carries)} carries inside the 5. "
+                        f"That's the touchdown role.", suffix_for=gl.name,
+                        standalone=f"{gl.name} got {_of_team(gl.gl_carries, tw.team_gl_carries)} carries inside the 5. "
+                                   f"That's the touchdown role."))
+
+    # High-value touches vs empty volume
+    top_hvt = max(backs, key=lambda p: p.hvt)
+    if top_hvt.hvt >= 6:
+        S.append(Signal("hvt", 6, top_hvt.name, f"{top_hvt.name}: {top_hvt.hvt} high-value touches",
+                        f"{top_hvt.name} had {top_hvt.hvt} high-value touches (catches plus carries inside the 10). "
+                        f"Those are the touches that score fantasy points.", suffix_for=top_hvt.name,
+                        standalone=f"{top_hvt.name} had {top_hvt.hvt} high-value touches (catches plus carries inside "
+                                   f"the 10). Those are the touches that score fantasy points."))
+    for p in backs:
+        if p.touches >= 15 and p.hvt <= 2:
+            S.append(Signal("empty_volume", 6, p.name, f"{p.name}: {p.touches} touches, {p.hvt} high-value",
+                            f"{p.name} had {p.touches} touches but only {p.hvt} high-value ones. That's empty volume, "
+                            f"so he needs long runs to pay off."))
+            break
+
+    # Points vs what the usage was worth
+    for p in sorted(backs, key=lambda p: -(p.xfp or 0)):
+        if p.xfp is None or p.fp is None or p.xfp < 5:
+            continue
+        if p.fp - p.xfp >= 8:
+            S.append(Signal("over_xfp", 5, p.name, f"{p.name}: {p.fp:.1f} PPR on {p.xfp:.1f} expected",
+                            f"{p.name} scored {p.fp:.1f} PPR on usage worth about {p.xfp:.1f}. He beat his workload by a lot, "
+                            f"so don't bank on that every week."))
+            break
+        if p.xfp - p.fp >= 6:
+            S.append(Signal("under_xfp", 6, p.name, f"{p.name}: {p.fp:.1f} PPR on {p.xfp:.1f} expected",
+                            f"{p.name} only scored {p.fp:.1f} PPR on usage worth about {p.xfp:.1f}. The work is there and "
+                            f"the points should follow. Buy-low."))
+            break
+
+    # Trends over the window
+    if w and w.n >= 3:
+        for p in sorted(w.rbs(), key=lambda p: -(p.carries + p.targets)):
+            k = len(p.wk_rush) // 2
+            missed = [w.weeks[i] for i in range(len(p.wk_rush) - k, len(p.wk_rush)) if p.wk_rush[i] is None]
+            a, b = _halves(p.wk_rush)
+            if a is None:
+                continue
+            if missed and a >= 0.40:
+                fill = max((x for x in tw.rbs() if x.name != p.name), key=lambda x: x.carries, default=None)
+                tail = (f" {fill.name} took {pct(fill.rush_share)} of the carries this week. If {p.name} sits again, "
+                        f"{fill.name} is the add.") if fill and fill.carries else ""
+                S.append(Signal("rb_missed", 8, p.name, f"{p.name}: {pct(a)} rush share early, missed {missed}",
+                                f"{p.name} didn't play in Week {missed[-1]} after taking {pct(a)} of the carries early in this "
+                                f"stretch.{tail}"))
+                break
+            if b - a >= RB_TREND and b >= 0.30:
+                S.append(Signal("rb_up", 7, p.name, f"{p.name}: rush share {pct(a)} -> {pct(b)} over {w.n}",
+                                f"Notice {poss(p.name)} carries climbing: {pct(a)} of the rush share early in this stretch, "
+                                f"{pct(b)} in the last two games."))
+            elif a - b >= RB_TREND and a >= 0.35 and not missed:
+                S.append(Signal("rb_down", 7, p.name, f"{p.name}: rush share {pct(a)} -> {pct(b)} over {w.n}",
+                                f"{poss(p.name)} grip on the backfield is slipping: {pct(a)} of the carries early in this "
+                                f"stretch, {pct(b)} lately."))
     return sorted(S, key=lambda s: -s.priority)

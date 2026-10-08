@@ -67,11 +67,41 @@ class PlayerLine:
     prior_tgt_share: float | None = None
     prior_snap_pct: float | None = None
     prior_games: int = 0
+    # rushing (designed runs: no QB scrambles, kneels or two-point tries)
+    carries: int = 0
+    rush_yds: int = 0
+    rush_tds: int = 0
+    rz_carries: int = 0  # inside the 20
+    i10_carries: int = 0  # inside the 10 ("green zone")
+    gl_carries: int = 0  # inside the 5
+    explosive_runs: int = 0  # 10+ yard runs
+    rush_share: float = 0.0  # carries / team carries
+    bf_share: float = 0.0  # backfield (opportunity) share: (carries + targets) / all RB carries + targets
+    xfp: float | None = None  # expected PPR points from usage (nflverse ffopportunity)
+    fp: float | None = None  # actual PPR points
     # rolling window only: one value per game in the window, oldest first (None = didn't play)
     wk_share: list = field(default_factory=list)
     wk_snap: list = field(default_factory=list)
     wk_targets: list = field(default_factory=list)
+    wk_rush: list = field(default_factory=list)
+    wk_bf: list = field(default_factory=list)
+    wk_xfp: list = field(default_factory=list)
     games: int = 0
+
+    @property
+    def hvt(self) -> int:
+        """High-value touches: receptions + carries inside the 10 (Ben Gretch's definition)."""
+        return self.receptions + self.i10_carries
+
+    @property
+    def touches(self) -> int:
+        return self.carries + self.receptions
+
+    @property
+    def wopp(self) -> float:
+        """Weighted opportunity (PPR): what an average back scores on this workload.
+        Target 1.59, carry outside the 5 0.58, carry inside the 5 2.37 (Barrett / Footballguys)."""
+        return 1.59 * self.targets + 0.58 * (self.carries - self.gl_carries) + 2.37 * self.gl_carries
 
 
 @dataclass
@@ -92,6 +122,9 @@ class TeamWeek:
     team_snaps: int
     drops_available: bool
     players: list[PlayerLine] = field(default_factory=list)
+    team_carries: int = 0
+    rb_opps: int = 0  # RB carries + RB targets
+    team_gl_carries: int = 0
     absent: list[PlayerLine] = field(default_factory=list)
 
     @property
@@ -130,6 +163,27 @@ class TeamWeek:
             key=lambda p: (-p.targets, -p.snap_pct, p.name),
         )
 
+    def by_carries(self) -> list[PlayerLine]:
+        return sorted([p for p in self.players if p.carries > 0],
+                      key=lambda p: (-p.carries, -p.snap_pct, p.name))
+
+    def rbs(self) -> list[PlayerLine]:
+        return sorted([p for p in self.players if p.position in {"RB", "FB"} and (p.snaps > 0 or p.carries > 0)],
+                      key=lambda p: (-(p.carries + p.targets), -p.snap_pct, p.name))
+
+    @property
+    def rb_title(self) -> str:
+        return "Backfield"
+
+    @property
+    def rb_subtitle(self) -> str:
+        score = f"{self.result} {self.team_score}\u2013{self.opp_score}"
+        return f"Week {self.week} · {self.matchup} · {score} · {self.team_carries} carries"
+
+    @property
+    def rb_bar_subtitle(self) -> str:
+        return f"Snap %, rush share and target share · {self.team_snaps} snaps"
+
     def by_snaps(self, positions=SKILL_POSITIONS) -> list[PlayerLine]:
         return sorted(
             [p for p in self.players if p.snaps > 0 and p.position in positions],
@@ -151,6 +205,11 @@ def load_season(season: int) -> dict[str, pl.DataFrame]:
         "teams": nfl.load_teams(),
         "sched": nfl.load_schedules(season),
     }
+    try:
+        frames["ffo"] = nfl.load_ff_opportunity(season)
+    except Exception as exc:  # expected points are a bonus; everything else works without them
+        log.warning("Expected fantasy points unavailable (%s)", exc)
+        frames["ffo"] = None
     try:
         frames["ftn"] = nfl.load_ftn_charting(season)
     except Exception as exc:  # FTN sometimes lags a few days; drops are optional
@@ -239,6 +298,26 @@ def _targets(pbp: pl.DataFrame, ftn: pl.DataFrame | None) -> pl.DataFrame:
     )
 
 
+def _rushes(pbp: pl.DataFrame) -> pl.DataFrame:
+    """Designed runs per game/team/rusher. Scrambles are pass plays that broke down, kneels
+    aren't real carries, so both are left out (that's how rush share is usually counted)."""
+    r = pbp.filter(
+        (pl.col("play_type") == "run")
+        & pl.col("rusher_player_id").is_not_null()
+        & (pl.col("qb_scramble").fill_null(0) == 0)
+        & (pl.col("two_point_attempt").fill_null(0) == 0)
+    )
+    return r.group_by(["week", "posteam", "rusher_player_id"]).agg(
+        pl.len().alias("carries"),
+        pl.col("rushing_yards").fill_null(0).sum().alias("rush_yds"),
+        pl.col("rush_touchdown").fill_null(0).sum().alias("rush_tds"),
+        (pl.col("yardline_100") <= RED_ZONE_MAX_YARDLINE).sum().alias("rz_carries"),
+        (pl.col("yardline_100") <= 10).sum().alias("i10_carries"),
+        (pl.col("yardline_100") <= 5).sum().alias("gl_carries"),
+        (pl.col("rushing_yards").fill_null(0) >= 10).sum().alias("explosive_runs"),
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Main builder
 # --------------------------------------------------------------------------- #
@@ -321,6 +400,29 @@ def build_team_week(season: int, week: int, team: str) -> TeamWeek | None:
         pl_.rec_tds = int(r["rec_tds"])
         pl_.drops = int(r["drops"])
 
+    # ---- rushing ----
+    ru = _rushes(f["pbp"].filter((pl.col("posteam") == team) & (pl.col("week") == week)))
+    team_carries = int(ru["carries"].sum()) if ru.height else 0
+    for r in ru.to_dicts():
+        info = by_gsis.get(r["rusher_player_id"], {})
+        pl_ = get_line(r["rusher_player_id"], info.get("display_name", "Unknown"), info.get("position", ""))
+        for k in ("carries", "rush_yds", "rush_tds", "rz_carries", "i10_carries", "gl_carries", "explosive_runs"):
+            setattr(pl_, k, int(r[k]))
+        pl_.rush_share = r["carries"] / team_carries if team_carries else 0.0
+    rbs = [p for p in lines.values() if p.position in {"RB", "FB"}]
+    rb_opps = sum(p.carries + p.targets for p in rbs)
+    for p in rbs:
+        p.bf_share = (p.carries + p.targets) / rb_opps if rb_opps else 0.0
+
+    # ---- expected / actual PPR points from usage (nflverse ffopportunity) ----
+    if f.get("ffo") is not None:
+        ffo = f["ffo"].filter((pl.col("week") == week) & (pl.col("posteam") == team))
+        for r in ffo.select("player_id", "total_fantasy_points_exp", "total_fantasy_points").to_dicts():
+            for p in lines.values():
+                if p.gsis_id == r["player_id"]:
+                    p.xfp = float(r["total_fantasy_points_exp"] or 0)
+                    p.fp = float(r["total_fantasy_points"] or 0)
+
     # ---- prior-week context (season to date, before this week) ----
     prior = _prior_context(tg.filter(pl.col("week") < week), sn.filter(pl.col("week") < week))
     for key, pl_ in lines.items():
@@ -368,6 +470,9 @@ def build_team_week(season: int, week: int, team: str) -> TeamWeek | None:
         and f["ftn"].filter(pl.col("week") == week).height > 0,
         players=list(lines.values()),
         absent=sorted(absent, key=lambda p: -(p.prior_tgt_share or 0)),
+        team_carries=team_carries,
+        rb_opps=rb_opps,
+        team_gl_carries=int(ru["gl_carries"].sum()) if ru.height else 0,
     )
 
 
@@ -427,6 +532,19 @@ class Window(TeamWeek):
     def span(self) -> str:
         return f" over the last {self.n} games"
 
+    @property
+    def rb_title(self) -> str:
+        return f"Backfield · Last {self.n} Games"
+
+    @property
+    def rb_subtitle(self) -> str:
+        wk = f"Weeks {self.weeks[0]}\u2013{self.weeks[-1]}" if self.n > 1 else f"Week {self.weeks[0]}"
+        return f"{wk} · {self.record} · {self.team_carries} carries"
+
+    @property
+    def rb_bar_subtitle(self) -> str:
+        return f"Snap %, rush share and target share · {self.team_snaps} snaps over {self.n} games"
+
 
 def team_games(season: int, week: int, team: str, n: int) -> list[int]:
     """Weeks of the team's last n completed games up to `week` (bye weeks naturally skipped)."""
@@ -464,6 +582,7 @@ def build_team_window(season: int, week: int, team: str, n: int = 4) -> Window |
                     gsis_id=p.gsis_id, name=p.name, full_name=p.full_name, position=p.position,
                     headshot=p.headshot, headshot_alt=p.headshot_alt,
                     wk_share=[None] * len(games), wk_snap=[None] * len(games), wk_targets=[0] * len(games),
+                    wk_rush=[None] * len(games), wk_bf=[None] * len(games), wk_xfp=[None] * len(games),
                 )
             a = agg[key]
             a.targets += p.targets
@@ -473,17 +592,30 @@ def build_team_window(season: int, week: int, team: str, n: int = 4) -> Window |
             a.rec_yards += p.rec_yards
             a.rec_tds += p.rec_tds
             a.snaps += p.snaps
-            if p.snaps > 0 or p.targets > 0:
+            for k in ("carries", "rush_yds", "rush_tds", "rz_carries", "i10_carries", "gl_carries", "explosive_runs"):
+                setattr(a, k, getattr(a, k) + getattr(p, k))
+            if p.xfp is not None:
+                a.xfp = (a.xfp or 0) + p.xfp
+                a.fp = (a.fp or 0) + (p.fp or 0)
+            if p.snaps > 0 or p.targets > 0 or p.carries > 0:
                 a.wk_share[i] = p.tgt_share
                 a.wk_snap[i] = p.snap_pct
                 a.wk_targets[i] = p.targets
+                a.wk_rush[i] = p.rush_share
+                a.wk_bf[i] = p.bf_share if p.position in {"RB", "FB"} else None
+                a.wk_xfp[i] = p.xfp
                 a.games += 1
             if p.position:
                 a.position = p.position
             a.headshot = p.headshot or a.headshot  # most recent photo wins
+    total_c = sum(g.team_carries for g in games)
+    total_rb = sum(g.rb_opps for g in games)
     for a in agg.values():
         a.tgt_share = a.targets / total_t if total_t else 0.0
         a.snap_pct = a.snaps / total_s if total_s else 0.0
+        a.rush_share = a.carries / total_c if total_c else 0.0
+        if a.position in {"RB", "FB"}:
+            a.bf_share = (a.carries + a.targets) / total_rb if total_rb else 0.0
 
     last = games[-1]
     return Window(
@@ -493,6 +625,7 @@ def build_team_window(season: int, week: int, team: str, n: int = 4) -> Window |
         total_rz_targets=sum(g.total_rz_targets for g in games), team_snaps=total_s,
         drops_available=all(g.drops_available for g in games),
         players=list(agg.values()), absent=[], weeks=weeks, record=record,
+        team_carries=total_c, rb_opps=total_rb, team_gl_carries=sum(g.team_gl_carries for g in games),
     )
 
 
@@ -500,7 +633,7 @@ def to_rows(tw: TeamWeek) -> list[dict]:
     """Flat rows for the audit CSV that ships with every weekly report."""
     out = []
     for p in sorted(tw.players, key=lambda p: (-p.targets, -p.snap_pct)):
-        if p.position not in SKILL_POSITIONS and p.targets == 0:
+        if p.position not in SKILL_POSITIONS and p.targets == 0 and p.carries == 0:
             continue
         out.append(
             {
@@ -524,6 +657,19 @@ def to_rows(tw: TeamWeek) -> list[dict]:
                 "prior_tgt_share": None if p.prior_tgt_share is None else round(p.prior_tgt_share, 4),
                 "prior_snap_pct": None if p.prior_snap_pct is None else round(p.prior_snap_pct, 4),
                 "prior_games": p.prior_games,
+                "carries": p.carries,
+                "team_carries": tw.team_carries,
+                "rush_share": round(p.rush_share, 4),
+                "bf_share": round(p.bf_share, 4) if p.position in {"RB", "FB"} else None,
+                "rush_yds": p.rush_yds,
+                "rush_td": p.rush_tds,
+                "rz_carries": p.rz_carries,
+                "i10_carries": p.i10_carries,
+                "gl_carries": p.gl_carries,
+                "hvt": p.hvt,
+                "wopp": round(p.wopp, 1),
+                "xfp": None if p.xfp is None else round(p.xfp, 1),
+                "fp": None if p.fp is None else round(p.fp, 1),
             }
         )
     return out

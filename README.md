@@ -61,6 +61,30 @@ or fading. The takes there look for trends: who's owned the role every week, who
 slipping between the first and last two games, snap shares growing, and who's getting the red-zone looks.
 Change the window with `--window` (e.g. `--window 3`).
 
+## The "RBs" tab
+
+Built around what running-back analysts actually use, because carries alone undersell or oversell backs:
+
+- **Sortable RB table, every team** (this week or last 4): snap %, **rush share** (his share of the team's
+  designed carries), target share, **Opp %** (his share of the backfield's carries + targets), carries,
+  targets, **HVT** (high-value touches = catches + carries inside the 10, Ben Gretch's definition),
+  **GL** (carries inside the 5), **xFP** (expected PPR points from his usage, nflverse's ffopportunity model:
+  the best single read on RB value) and actual PPR. Sorted by xFP; tap any column to re-sort.
+- **Backfield card per team**: carry-share donut (with yards and goal-line carries under each back) plus
+  snap / rush / target bars side by side for each back, with carries, HVT and xFP under his name.
+- **Rush share by week** for the last 4 games under each card.
+- **The take** looks for workhorse vs. committee vs. lead back, the passing-down back, the goal-line back,
+  high-value touches vs. empty volume, points vs. expected (buy-low / regression), and carry trends.
+
+## The "Movers" tab
+
+League-wide risers and fallers over the rolling window: the last 2 games vs. the first 2, only games
+played. Receivers and tight ends by target share, running backs by backfield share, ranked so a big
+WR jump and a big RB jump compare fairly. Each player shows the before/after, snaps, xFP per game, a
+game-by-game sparkline and a tag: **Waiver add** (barely used early, real role now), **Buy**, **Buy low**
+(looks dipped, snaps held), **Sell** (snaps and looks both shrinking) or **Watch**. Players who missed
+the latest game are left out (that's an injury question). Filter by RB / WR / TE. Full list in `movers.json`.
+
 ## How the numbers are defined (`volumetrics/data.py`)
 
 - **Target**: pass play with a named receiver, no two-point tries, no plays wiped out by penalty.
