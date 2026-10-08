@@ -29,7 +29,9 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from volumetrics import data as D
-from volumetrics.charts import FONT_DIR, render_team
+from matplotlib.colors import to_hex
+
+from volumetrics.charts import FONT_DIR, LANDSCAPE, PORTRAIT, accent, render_team
 from volumetrics.insights import detect_signals, write_take
 from volumetrics.narrator import narrate
 from volumetrics.report import build_index, build_page
@@ -93,12 +95,18 @@ def main(argv=None) -> int:
             log.warning("%s: no usable data, skipped", team)
             missing.append(team)
             continue
-        img = render_team(tw, out_dir / "img" / f"{team}.png", brand=a.brand)
+        # Phone card (PNG kept so it can be saved/posted) + WebP copies the page actually loads
+        img_m = render_team(tw, out_dir / "img" / f"{team}-m.png", brand=a.brand, layout=PORTRAIT)
+        land_png = render_team(tw, out_dir / "img" / f"{team}.png", brand=a.brand, layout=LANDSCAPE)
+        webp_m = _webp(img_m)
+        img = _webp(land_png, remove_png=True)
         take = write_take(tw, detect_signals(tw))
         if use_llm:
             take = narrate(tw, take)
         entries.append({
-            "team": team, "team_name": tw.team_name, "img_path": img, "img_rel": f"img/{team}.png",
+            "team": team, "team_name": tw.team_name, "color": to_hex(accent(tw.colors)),
+            "img_path": img, "img_rel": f"img/{img.name}",
+            "img_path_m": img_m, "img_rel_m": f"img/{webp_m.name}", "img_png_m": f"img/{img_m.name}",
             "take": take.text, "evidence": [s.evidence for s in take.signals],
         })
         rows.extend(D.to_rows(tw))
@@ -112,10 +120,16 @@ def main(argv=None) -> int:
 
     entries.sort(key=lambda e: e["team_name"])  # same order as the reference: by city
     source = "claude" if any(t["source"] == "claude" for t in takes.values()) else "template"
-    build_page(season, week, entries, out_dir / "index.html", missing=missing, take_source=source)
+    color = {e["team"]: e["color"] for e in entries}
+    leaders = [  # top target shares of the week (8+ targets), linked to each team
+        {"label": r["label"], "team": r["team"], "share": r["tgt_share"], "color": color[r["team"]]}
+        for r in sorted((r for r in rows if r["targets"] >= 8), key=lambda r: -r["tgt_share"])[:5]
+    ]
+    build_page(season, week, entries, out_dir / "index.html", missing=missing,
+               take_source=source, leaders=leaders)
     if a.embed:
         build_page(season, week, entries, out_dir / "report-standalone.html", embed=True,
-                   missing=missing, take_source=source)
+                   missing=missing, take_source=source, leaders=leaders)
 
     with open(out_dir / "data.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
@@ -140,6 +154,17 @@ def main(argv=None) -> int:
     _gh_output(built="true", season=season, week=week, complete=str(complete).lower(),
                teams=len(entries), missing=" ".join(missing), path=f"{season}/week-{week:02d}/")
     return 0
+
+
+def _webp(png: Path, remove_png: bool = False) -> Path:
+    """WebP is ~3x smaller than PNG at the same sharpness, so the page loads fast on phones."""
+    from PIL import Image
+
+    out = png.with_suffix(".webp")
+    Image.open(png).convert("RGB").save(out, "WEBP", quality=90, method=6)
+    if remove_png:
+        png.unlink()
+    return out
 
 
 def _gh_output(**kv):

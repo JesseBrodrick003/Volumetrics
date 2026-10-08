@@ -24,6 +24,7 @@ import hashlib
 import io
 import logging
 import math
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import matplotlib
@@ -46,7 +47,7 @@ FONT_DIR = ROOT / "assets" / "fonts"
 CACHE_DIR = ROOT / ".cache" / "images"
 
 # ---- look & feel ---------------------------------------------------------- #
-W_IN, H_IN, DPI = 16, 9, 120
+DPI = 120
 BG = "#0f1218"
 TEXT = "#f2f4f7"
 MUTED = "#8b93a1"
@@ -226,14 +227,64 @@ def _circle_image(ax, arr, x, y, diam_px, zorder=5):
 # --------------------------------------------------------------------------- #
 # Card
 # --------------------------------------------------------------------------- #
-def _background(fig, tw: TeamWeek):
-    h, w = 270, 480
+# --------------------------------------------------------------------------- #
+# Layouts: "landscape" (1920x1080, like the reference, for desktop/posting)
+#          "portrait"  (1080x1920, story-sized, what phones get)
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class Layout:
+    name: str
+    size: tuple[float, float]  # inches at DPI
+    font: dict  # point sizes by role
+    tiers: tuple  # wedge label tiers: (headshot px, (name, stat, sub) pt), biggest first
+    radial_head: int  # headshot px on thin slices
+    bar_head: int  # max headshot px on bars
+    logo: tuple  # header logo rect
+    text_x: tuple[float, float]  # header text x (with logo, without)
+    head_y: tuple[float, float, float]  # team name, "Target Share", subscript
+    donut: tuple
+    snap_xy: tuple[float, float, float]  # x, title y, subscript y
+    bars: tuple
+    watermark: tuple
+    glow: tuple  # (x, y) of the team-color glow, 0..1 from top-left
+    footer: bool  # brand + credit at the bottom instead of top-right
+    name_rows_px: tuple = (8, 1.35)  # bar name stagger: first row offset, row gap (x font px)
+
+
+LANDSCAPE = Layout(
+    name="landscape", size=(16, 9),
+    font=dict(team=31, ts=20, sub=13, brand=12, credit=9.5, center_num=46, center_lbl=12,
+              snap_title=21, snap_sub=13, pct=12.5, names=11.5, ytick=10.5, radial=9, radial_plus=8.5),
+    tiers=((118, (21, 15, 11)), (84, (16, 12, 9.5)), (56, (12, 9.5, 8)), (42, (10.5, 8.5, 7))),
+    radial_head=40, bar_head=62,
+    logo=(0.018, 0.865, 0.06, 0.11), text_x=(0.082, 0.026), head_y=(0.958, 0.893, 0.848),
+    donut=(0.01, 0.015, 0.52, 0.80), snap_xy=(0.575, 0.835, 0.793),
+    bars=(0.605, 0.125, 0.37, 0.62), watermark=(0.60, 0.08, 0.38, 0.68),
+    glow=(0.18, 0.15), footer=False,
+)
+
+PORTRAIT = Layout(
+    name="portrait", size=(9, 16),
+    font=dict(team=38, ts=25, sub=18, brand=15, credit=12, center_num=66, center_lbl=17,
+              snap_title=28, snap_sub=18, pct=19, names=16.5, ytick=14, radial=13, radial_plus=12),
+    tiers=((158, (28, 20, 15)), (112, (21.5, 16.5, 13)), (78, (16.5, 13, 11.5)), (58, (13.5, 11.5, 10.5))),
+    radial_head=54, bar_head=78,
+    logo=(0.035, 0.910, 0.13, 0.074), text_x=(0.185, 0.045), head_y=(0.977, 0.942, 0.915),
+    donut=(0.0, 0.403, 1.0, 0.492), snap_xy=(0.06, 0.392, 0.366),
+    bars=(0.135, 0.100, 0.83, 0.225), watermark=(0.12, 0.06, 0.82, 0.30),
+    glow=(0.20, 0.06), footer=True,
+)
+
+
+def _background(fig, tw: TeamWeek, L: Layout):
+    w, h = (480, 270) if L.size[0] > L.size[1] else (270, 480)
     yy, xx = np.mgrid[0:h, 0:w]
     xx, yy = xx / w, yy / h
     base = np.array(to_rgb(BG))
     glow = np.array(to_rgb(tw.colors[0])) if tw.colors else base
-    g1 = np.exp(-(((xx - 0.18) ** 2) / 0.10 + ((yy - 0.15) ** 2) / 0.14))[..., None]
-    g2 = np.exp(-(((xx - 0.80) ** 2) / 0.08 + ((yy - 0.75) ** 2) / 0.10))[..., None]
+    gx, gy = L.glow
+    g1 = np.exp(-(((xx - gx) ** 2) / 0.10 + ((yy - gy) ** 2) / 0.14))[..., None]
+    g2 = np.exp(-(((xx - (1 - gx)) ** 2) / 0.08 + ((yy - (1 - gy)) ** 2) / 0.10))[..., None]
     img = base + (glow - base) * (0.20 * g1 + 0.07 * g2)
     vign = 1 - 0.25 * (((xx - 0.5) ** 2) + ((yy - 0.5) ** 2))[..., None]
     bg = fig.add_axes((0, 0, 1, 1), zorder=-100)
@@ -242,7 +293,7 @@ def _background(fig, tw: TeamWeek):
 
     logo = fetch_image(tw.logo_url)
     if logo is not None:  # faint watermark behind the bars, like the reference
-        wm = fig.add_axes((0.60, 0.08, 0.38, 0.68), zorder=-90)
+        wm = fig.add_axes(L.watermark, zorder=-90)
         a = np.asarray(logo).astype(float) / 255
         a[..., 3] *= 0.06
         wm.imshow(a)
@@ -250,22 +301,28 @@ def _background(fig, tw: TeamWeek):
     return logo
 
 
-def _header(fig, tw: TeamWeek, logo, brand: str):
-    x0 = 0.026
+def _header(fig, tw: TeamWeek, logo, brand: str, L: Layout):
+    F = L.font
+    x0 = L.text_x[1]
     if logo is not None:
-        lax = fig.add_axes((0.018, 0.865, 0.06, 0.11))
+        lax = fig.add_axes(L.logo)
         lax.imshow(logo)
         lax.set_axis_off()
-        x0 = 0.082
-    fig.text(x0, 0.958, tw.team_name, fontsize=31, color=TEXT, weight="medium", va="top")
-    fig.text(x0, 0.893, "Target Share", fontsize=20, color=accent(tw.colors), weight="medium", va="top")
+        x0 = L.text_x[0]
+    y_name, y_ts, y_sub = L.head_y
+    fig.text(x0, y_name, tw.team_name, fontsize=F["team"], color=TEXT, weight="medium", va="top")
+    fig.text(x0, y_ts, "Target Share", fontsize=F["ts"], color=accent(tw.colors), weight="medium", va="top")
     score = f"{tw.result} {tw.team_score}\u2013{tw.opp_score}"
     sub = f"Week {tw.week} · {tw.matchup} · {score} · {tw.total_targets} targets"
-    fig.text(x0, 0.848, sub, fontsize=13, color=MUTED, va="top")  # subscript
+    fig.text(x0, y_sub, sub, fontsize=F["sub"], color=MUTED, va="top")  # subscript
 
-    fig.text(0.978, 0.962, brand, fontsize=12, color=MUTED, ha="right", va="top", weight="medium")
     credit = "Data: nflverse (pbp, PFR snaps)" + (", FTN charting" if tw.drops_available else "")
-    fig.text(0.978, 0.932, credit, fontsize=9.5, color="#5d6573", ha="right", va="top")
+    if L.footer:
+        fig.text(0.045, 0.022, brand, fontsize=F["brand"], color=MUTED, ha="left", va="bottom", weight="medium")
+        fig.text(0.955, 0.022, credit, fontsize=F["credit"], color="#5d6573", ha="right", va="bottom")
+    else:
+        fig.text(0.978, 0.962, brand, fontsize=F["brand"], color=MUTED, ha="right", va="top", weight="medium")
+        fig.text(0.978, 0.932, credit, fontsize=F["credit"], color="#5d6573", ha="right", va="top")
 
 
 def _donut_slices(tw: TeamWeek):
@@ -287,8 +344,7 @@ def _box_in_slice(cx, cy, w, h, theta1, theta2, ppd, pad_px=5):
             if not (R_IN + pad_px / ppd <= rad <= R_OUT - pad_px / ppd):
                 return False
             ang = math.degrees(math.atan2(y, x))
-            # unwrap into [theta1, theta1 + 360)
-            while ang < theta1:
+            while ang < theta1:  # unwrap into [theta1, theta1 + 360)
                 ang += 360
             while ang >= theta1 + 360:
                 ang -= 360
@@ -298,7 +354,7 @@ def _box_in_slice(cx, cy, w, h, theta1, theta2, ppd, pad_px=5):
     return True
 
 
-def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets, tw, rest_n=0):
+def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets, L: Layout, rest_n=0):
     mid = math.radians((theta1 + theta2) / 2)
     text_c = DARK_TEXT if (p is not None and luminance(color) > 0.55) else TEXT
     sub_c = (0.15, 0.17, 0.2) if text_c == DARK_TEXT else (1, 1, 1, 0.62)
@@ -315,11 +371,10 @@ def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets
     fig = ax.figure
     ppd = ax.get_position().height * fig.get_figheight() * fig.dpi / np.ptp(ax.get_ylim())
     pt = fig.dpi / 72
-    tiers = [(0.64, 118, (21, 15, 11)), (0.66, 84, (16, 12, 9.5)),
-             (0.67, 56, (12, 9.5, 8)), (0.68, 42, (10.5, 8.5, 7))]
     first = 0 if share >= 0.18 else 1 if share >= 0.10 else 2
     r = diam = fs = None
-    for tr, td, tfs in tiers[first:]:
+    for i, (td, tfs) in enumerate(L.tiers[first:], start=first):
+        tr = 0.64 + 0.01 * i
         stack_h = (td + (tfs[0] + tfs[1] + (tfs[2] if sub else 0)) * 1.25 * pt) / ppd
         text_w = max(len(name) * tfs[0], len(stat) * tfs[1], td / pt) * 0.52 * pt / ppd
         for rr in (tr, tr + 0.04, tr - 0.04):
@@ -329,24 +384,39 @@ def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets
         if r is not None:
             break
 
+    F = L.font
     if r is None:
         # thin slice: small headshot near the rim, text running along the radius
         deg = (theta1 + theta2) / 2
         rot = deg if -90 <= ((deg + 180) % 360 - 180) <= 90 else deg + 180
         hx, hy = 0.885 * math.cos(mid), 0.885 * math.sin(mid)
         if p is not None:
-            _circle_image(ax, avatar(p, color), hx, hy, 40, zorder=6)
+            _circle_image(ax, avatar(p, color), hx, hy, L.radial_head, zorder=6)
         else:
-            ax.add_patch(Circle((hx, hy), 0.05, fill=False, ec=TEXT, lw=1.2, zorder=6))
-            ax.text(hx, hy, f"+{rest_n}", ha="center", va="center", fontsize=8.5, color=TEXT, zorder=7)
-        ax.text(0.63 * math.cos(mid), 0.63 * math.sin(mid), f"{name}  {stat}", rotation=rot,
-                rotation_mode="anchor", ha="center", va="center", fontsize=9, color=text_c,
-                weight="medium", zorder=7)
+            ax.add_patch(Circle((hx, hy), L.radial_head / 2 / ppd, fill=False, ec=TEXT, lw=1.2, zorder=6))
+            ax.text(hx, hy, f"+{rest_n}", ha="center", va="center", fontsize=F["radial_plus"], color=TEXT, zorder=7)
+        # Text runs along the radius between the center hole and the headshot. Use two lines
+        # (name / stat) when the slice is wide enough, otherwise one; shrink until it fits.
+        r0 = R_IN + 8 / ppd
+        r1 = 0.885 - (L.radial_head / 2 + 8) / ppd
+        rc = (r0 + r1) / 2
+        arc_px = rc * math.radians(theta2 - theta1) * ppd  # slice width at the text, px
+        size = F["radial"]
+        while True:
+            two = arc_px >= 2 * 1.2 * size * pt + 6
+            longest = max(len(name), len(stat)) if two else len(f"{name}  {stat}")
+            if size <= 6 or longest * size * 0.50 * pt / ppd <= (r1 - r0):
+                break
+            size -= 0.5
+        line = f"{name}\n{stat}" if two else f"{name}  {stat}"
+        ax.text(rc * math.cos(mid), rc * math.sin(mid), line, rotation=rot,
+                rotation_mode="anchor", ha="center", va="center", multialignment="center",
+                fontsize=size, color=text_c, weight="medium", zorder=7, linespacing=1.15)
         return
 
     cx, cy = r * math.cos(mid), r * math.sin(mid)
     # vertical stack: [headshot] name / stat / subscript, centered on the slice anchor
-    stack = diam / ppd + (fs[0] + fs[1] + (fs[2] if sub else 0)) * 1.25 / 72 * ax.figure.dpi / ppd
+    stack = diam / ppd + (fs[0] + fs[1] + (fs[2] if sub else 0)) * 1.25 * pt / ppd
     top = cy + stack / 2
     hy = top - diam / ppd / 2
     if p is not None:
@@ -360,14 +430,20 @@ def _wedge_label(ax, p: PlayerLine | None, color, theta1, theta2, share, targets
         if not txt:
             continue
         ax.text(cx, y, txt, ha="center", va="top", fontsize=size, color=col, weight=wt, zorder=7)
-        y -= size * 1.25 / 72 * ax.figure.dpi / ppd
+        y -= size * 1.25 * pt / ppd
 
 
-def _donut(fig, tw: TeamWeek, colors: dict):
-    ax = fig.add_axes((0.005, 0.015, 0.52, 0.80))
-    ax.set_xlim(-1.06, 1.06)
-    ax.set_ylim(-1.06, 1.06)
-    ax.set_aspect("equal")
+def _donut(fig, tw: TeamWeek, colors: dict, L: Layout):
+    # Square axes (in inches) so the ring is a true circle: the round headshots use
+    # aspect="auto" images, which would otherwise stretch the donut into an oval.
+    x, y, w, h = L.donut
+    W, H = fig.get_figwidth(), fig.get_figheight()
+    side = min(w * W, h * H)
+    rect = (x + (w * W - side) / 2 / W, y + (h * H - side) / 2 / H, side / W, side / H)
+    ax = fig.add_axes(rect)
+    lim = 1.06 if L.name == "landscape" else 1.03
+    ax.set_xlim(-lim, lim)
+    ax.set_ylim(-lim, lim)
     ax.set_axis_off()
 
     solo, rest = _donut_slices(tw)
@@ -381,23 +457,25 @@ def _donut(fig, tw: TeamWeek, colors: dict):
         sweep = 360.0 * n / total
         t1, t2 = angle - sweep, angle
         ax.add_patch(Wedge((0, 0), R_OUT, t1, t2, width=R_OUT - R_IN, fc=col, ec=BG, lw=2.6, zorder=2))
-        _wedge_label(ax, p, col, t1, t2, n / total, n, tw, rest_n=len(rest))
+        _wedge_label(ax, p, col, t1, t2, n / total, n, L, rest_n=len(rest))
         angle = t1
 
+    F = L.font
     ax.add_patch(Circle((0, 0), R_IN - 0.015, fc=CENTER_FILL, ec="#272b34", lw=3, zorder=3))
-    ax.text(0, 0.045, f"{tw.total_targets}", ha="center", va="center", fontsize=46, color=TEXT,
+    ax.text(0, 0.045, f"{tw.total_targets}", ha="center", va="center", fontsize=F["center_num"], color=TEXT,
             weight="medium", zorder=4)
-    ax.text(0, -0.135, "TARGETS", ha="center", va="center", fontsize=12, color=MUTED, zorder=4)
+    ax.text(0, -0.135, "TARGETS", ha="center", va="center", fontsize=F["center_lbl"], color=MUTED, zorder=4)
 
 
-def _bars(fig, tw: TeamWeek, colors: dict):
-    x0 = 0.575
-    fig.text(x0, 0.835, "Snap %", fontsize=21, color=TEXT, weight="medium", va="top")
-    fig.text(x0, 0.793, f"Share of the team's {tw.team_snaps} offensive snaps", fontsize=13,
+def _bars(fig, tw: TeamWeek, colors: dict, L: Layout):
+    F = L.font
+    x0, ty, sy = L.snap_xy
+    fig.text(x0, ty, "Snap %", fontsize=F["snap_title"], color=TEXT, weight="medium", va="top")
+    fig.text(x0, sy, f"Share of the team's {tw.team_snaps} offensive snaps", fontsize=F["snap_sub"],
              color=MUTED, va="top")  # subscript
 
     players = tw.by_snaps()[:MAX_BARS]
-    ax = fig.add_axes((x0 + 0.03, 0.125, 0.975 - x0 - 0.03, 0.62))
+    ax = fig.add_axes(L.bars)
     n = max(len(players), 1)
     ax.set_xlim(-0.6, n - 0.4)
     ax.set_ylim(0, 1.12)
@@ -405,34 +483,38 @@ def _bars(fig, tw: TeamWeek, colors: dict):
 
     for lvl in (0, 0.25, 0.5, 0.75, 1.0):
         ax.plot([-0.6, n - 0.4], [lvl, lvl], color=GRID, lw=1, zorder=0)
-        ax.text(-0.7, lvl, f"{lvl:.0%}", ha="right", va="center", fontsize=10.5, color="#6b7380")
+        ax.text(-0.7, lvl, f"{lvl:.0%}", ha="right", va="center", fontsize=F["ytick"], color="#6b7380")
 
+    pt = fig.dpi / 72
+    ppy = ax.get_position().height * fig.get_figheight() * fig.dpi / 1.12  # px per data unit (y)
     bar_w = 0.64
     ppx = ax.get_position().width * fig.get_figwidth() * fig.dpi / (n + 0.2)
-    diam = min(62, bar_w * ppx * 0.92)
+    diam = min(L.bar_head, bar_w * ppx * 0.92)
+    row1 = L.name_rows_px[0] / ppy
+    row2 = (L.name_rows_px[0] + F["names"] * pt * L.name_rows_px[1]) / ppy
     for i, p in enumerate(players):
         col = colors.get(p.name, to_rgb(OTHER_GRAY))
         ax.add_patch(Rectangle((i - bar_w / 2, 0), bar_w, p.snap_pct, fc=col, ec="none", zorder=2))
         ry = _circle_image(ax, avatar(p, col), i, p.snap_pct, diam, zorder=5)
-        ax.text(i, p.snap_pct + ry + 0.012, f"{p.snap_pct:.0%}", ha="center", va="bottom",
-                fontsize=12.5, color=TEXT, weight="medium", zorder=6)
+        ax.text(i, p.snap_pct + ry + 6 / ppy, f"{p.snap_pct:.0%}", ha="center", va="bottom",
+                fontsize=F["pct"], color=TEXT, weight="medium", zorder=6)
         # staggered names, two rows, like the reference
-        ax.text(i, -0.045 if i % 2 == 0 else -0.105, p.name, ha="center", va="top",
-                fontsize=11.5, color="#c9ced6", clip_on=False)
+        ax.text(i, -(row1 if i % 2 == 0 else row2), p.name, ha="center", va="top",
+                fontsize=F["names"], color="#c9ced6", clip_on=False)
 
 
-def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS") -> Path:
+def render_team(tw: TeamWeek, out_path: Path, brand: str = "VOLUMETRICS", layout: Layout = LANDSCAPE) -> Path:
     # One color per player, shared by donut and bars: target order first, then snap-only guys
     order = [p.name for p in tw.by_targets()]
     order += [p.name for p in tw.by_snaps() if p.name not in order]
     pal = team_palette(tw.colors, max(len(order), 1))
     colors = {name: pal[i] for i, name in enumerate(order)}
 
-    fig = plt.figure(figsize=(W_IN, H_IN), dpi=DPI, facecolor=BG)
-    logo = _background(fig, tw)
-    _header(fig, tw, logo, brand)
-    _donut(fig, tw, colors)
-    _bars(fig, tw, colors)
+    fig = plt.figure(figsize=layout.size, dpi=DPI, facecolor=BG)
+    logo = _background(fig, tw, layout)
+    _header(fig, tw, logo, brand, layout)
+    _donut(fig, tw, colors, layout)
+    _bars(fig, tw, colors, layout)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=DPI, facecolor=BG)
     plt.close(fig)

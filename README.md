@@ -4,7 +4,7 @@ Weekly NFL usage cards: a **target-share donut** and a **snap % bar chart** for 
 with a short spoken-style **take** underneath each one. Runs itself every Tuesday on GitHub
 Actions and publishes to GitHub Pages.
 
-![example card](docs/2026/week-04/img/CAR.png)
+![example card](docs/2026/week-04/img/CAR-m.png)
 
 ## How it runs
 
@@ -42,8 +42,9 @@ python run_weekly.py --teams CAR DAL --embed # a few teams + one self-contained 
 
 | File | What it is |
 |---|---|
-| `index.html` | every team: chart, the take, and a "Why this take" list with the numbers behind it |
-| `img/<TEAM>.png` | 1920×1080 chart cards, ready to post |
+| `index.html` | top target shares, then every team: chart, the take, and "Why this take" with the numbers |
+| `img/<TEAM>-m.png` | 1080×1920 phone card (story-sized), what phones see; tap a card to open it |
+| `img/<TEAM>.webp`, `img/<TEAM>-m.webp` | the wide and phone cards the page loads (WebP, ~3x smaller) |
 | `report-standalone.html` | same page with images inlined, one file you can text or email |
 | `data.csv` | every number used, one row per player |
 | `takes.json` | each take plus the signals and evidence that produced it |
