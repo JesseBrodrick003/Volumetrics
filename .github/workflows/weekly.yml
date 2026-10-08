@@ -7,8 +7,9 @@ on:
   workflow_dispatch:       # "Run workflow": builds if needed, re-publishes, and re-sends the link
     inputs:
       season: { description: "Season (blank = current)", required: false }
-      week:   { description: "Week (blank = latest completed)", required: false }
+      week:   { description: "Week(s), e.g. 5 or 2 3 4 (blank = latest completed)", required: false }
       email:  { description: "Send the email", type: boolean, default: true }
+      force:  { description: "Rebuild even if already built", type: boolean, default: false }
 
 permissions:
   contents: write   # commit the report into docs/
@@ -45,6 +46,7 @@ jobs:
           ARGS="--skip-if-exists"
           if [ -n "${{ inputs.season }}" ]; then ARGS="$ARGS --season ${{ inputs.season }}"; fi
           if [ -n "${{ inputs.week }}" ]; then ARGS="$ARGS --week ${{ inputs.week }}"; fi
+          if [ "${{ inputs.force }}" = "true" ]; then ARGS="$ARGS --force"; fi
           python run_weekly.py $ARGS
 
       - name: Commit report to docs/

@@ -31,7 +31,7 @@ from pathlib import Path
 from volumetrics import data as D
 from matplotlib.colors import to_hex
 
-from volumetrics.charts import FONT_DIR, accent, render_cards
+from volumetrics.charts import FONT_DIR, accent, fetch_image, render_cards
 from volumetrics.insights import detect_signals, detect_window_signals, write_take
 from volumetrics.narrator import narrate
 from volumetrics.report import build_index, build_page
@@ -48,7 +48,8 @@ def current_season(today: date | None = None) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--season", type=int, default=None)
-    ap.add_argument("--week", type=int, default=None)
+    ap.add_argument("--week", type=int, nargs="*", default=None, help="one or more weeks (default: latest)")
+    ap.add_argument("--force", action="store_true", help="rebuild even if the week is already complete")
     ap.add_argument("--teams", nargs="*", default=None, help="team abbreviations, e.g. CAR DAL")
     ap.add_argument("--out", type=Path, default=ROOT / "docs")
     ap.add_argument("--brand", default=os.getenv("VOLUMETRICS_BRAND") or "VOLUMETRICS",
@@ -63,15 +64,24 @@ def main(argv=None) -> int:
     logging.basicConfig(level=logging.DEBUG if a.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+    if a.week and len(a.week) > 1:  # several weeks: build each one in turn
+        args = list(argv if argv is not None else sys.argv[1:])
+        i = args.index("--week")
+        j = i + 1
+        while j < len(args) and not args[j].startswith("-"):
+            j += 1
+        base = args[:i] + args[j:]
+        return max(main(base + ["--week", str(w)]) for w in a.week)
+
     season = a.season or current_season()
-    week = a.week or D.latest_completed_week(season)
+    week = (a.week[0] if a.week else None) or D.latest_completed_week(season)
     if not week:
         log.info("No completed weeks for %s yet. Nothing to do.", season)
         return 0
 
     out_dir = a.out / str(season) / f"week-{week:02d}"
     manifest_path = out_dir / "manifest.json"
-    if a.skip_if_exists and manifest_path.exists():
+    if a.skip_if_exists and not a.force and manifest_path.exists():
         m = json.loads(manifest_path.read_text())
         if m.get("complete"):
             log.info("Week %s already complete at %s. Skipping.", week, out_dir)
@@ -145,10 +155,12 @@ def main(argv=None) -> int:
                            "leaders_title": f"Top target shares, last {n} games"})
 
     source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"
-    build_page(season, week, panels, out_dir / "index.html", missing=missing, take_source=source)
+    logo_paths = team_logos([e for p in panels for e in p["entries"]], a.out)
+    build_page(season, week, panels, out_dir / "index.html", missing=missing, take_source=source,
+               logos=_logo_srcs(logo_paths, False))
     if a.embed:
         build_page(season, week, panels, out_dir / "report-standalone.html", embed=True,
-                   missing=missing, take_source=source)
+                   missing=missing, take_source=source, logos=_logo_srcs(logo_paths, True))
 
     for name, data in (("data.csv", rows), ("data_l4.csv", rows_l4)):
         if data:
@@ -177,6 +189,31 @@ def main(argv=None) -> int:
     return 0
 
 
+def team_logos(entries: list[dict], docs: Path) -> dict[str, Path]:
+    """Small team logos for the team buttons, saved once to docs/assets/logos/ and reused."""
+    out = {}
+    folder = docs / "assets" / "logos"
+    folder.mkdir(parents=True, exist_ok=True)
+    for e in entries:
+        path = folder / f"{e['team']}.png"
+        if not path.exists():
+            img = fetch_image(e.get("logo_url"))
+            if img is None:
+                continue
+            img = img.copy()
+            img.thumbnail((96, 96))
+            img.save(path)
+        out[e["team"]] = path
+    return out
+
+
+def _logo_srcs(paths: dict[str, Path], embed: bool) -> dict[str, str]:
+    if not embed:
+        return {t: f"../../assets/logos/{p.name}" for t, p in paths.items()}
+    import base64
+    return {t: "data:image/png;base64," + base64.b64encode(p.read_bytes()).decode() for t, p in paths.items()}
+
+
 def _team_job(job):
     """One team, one view: the numbers and the take (fast, main process). Cards are rendered
     afterwards in parallel by render_cards()."""
@@ -196,7 +233,7 @@ def _team_job(job):
     img_m = out_dir / "img" / sub / f"{team}-m.webp"
     img = out_dir / "img" / sub / f"{team}.webp"
     entry = {
-        "team": team, "team_name": tw.team_name, "color": to_hex(accent(tw.colors)),
+        "team": team, "team_name": tw.team_name, "color": to_hex(accent(tw.colors)), "logo_url": tw.logo_url,
         "img_path": img, "img_rel": f"img/{sub}{img.name}",
         "img_path_m": img_m, "img_rel_m": f"img/{sub}{img_m.name}", "img_png_m": f"img/{sub}{img_m.name}",
         "take": take.text, "evidence": [s.evidence for s in take.signals],
