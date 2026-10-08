@@ -507,7 +507,7 @@ def detect_rb_signals(tw: TeamWeek, w: Window | None = None) -> list[Signal]:
     # Role: workhorse or committee
     if lead.snap_pct >= RB_WORKHORSE_SNAP and lead.rush_share >= RB_WORKHORSE_RUSH:
         held = ""
-        if w and w.n >= 3:
+        if w and w.n >= 3 and w is not tw:
             wl = next((p for p in w.rbs() if p.name == lead.name), None)
             if wl and wl.rush_share >= 0.6:
                 held = f" That's been his job all {w.n} games ({pct(wl.rush_share)} of the carries)."
@@ -569,20 +569,22 @@ def detect_rb_signals(tw: TeamWeek, w: Window | None = None) -> list[Signal]:
             break
 
     # Points vs what the usage was worth
+    g = getattr(tw, "n", 1) or 1  # rolling view: compare per game
     for p in sorted(backs, key=lambda p: -(p.xfp or 0)):
-        if p.xfp is None or p.fp is None or p.xfp < 5:
+        if p.xfp is None or p.fp is None or p.xfp / g < 5:
             continue
-        if p.fp - p.xfp >= 8:
-            S.append(Signal("over_xfp", 5, p.name, f"{p.name}: {p.fp:.1f} PPR on {p.xfp:.1f} expected",
-                            f"{p.name} scored {p.fp:.1f} PPR on usage worth about {p.xfp:.1f}. He beat his workload by a lot, "
-                            f"so don't bank on that every week."))
+        per = " per game" if g > 1 else ""
+        xfp, fp = p.xfp / g, p.fp / g
+        if fp - xfp >= 8:
+            S.append(Signal("over_xfp", 5, p.name, f"{p.name}: {fp:.1f} PPR{per} on {xfp:.1f} expected",
+                            f"{p.name} scored {fp:.1f} PPR{per} on usage worth about {xfp:.1f}. He's beating his workload "
+                            f"by a lot, so don't bank on that every week."))
             break
-        if p.xfp - p.fp >= 6:
-            S.append(Signal("under_xfp", 6, p.name, f"{p.name}: {p.fp:.1f} PPR on {p.xfp:.1f} expected",
-                            f"{p.name} only scored {p.fp:.1f} PPR on usage worth about {p.xfp:.1f}. The work is there and "
+        if xfp - fp >= 6:
+            S.append(Signal("under_xfp", 6, p.name, f"{p.name}: {fp:.1f} PPR{per} on {xfp:.1f} expected",
+                            f"{p.name} only scored {fp:.1f} PPR{per} on usage worth about {xfp:.1f}. The work is there and "
                             f"the points should follow. Buy-low."))
             break
-
     # Trends over the window
     if w and w.n >= 3:
         for p in sorted(w.rbs(), key=lambda p: -(p.carries + p.targets)):
@@ -592,10 +594,13 @@ def detect_rb_signals(tw: TeamWeek, w: Window | None = None) -> list[Signal]:
             if a is None:
                 continue
             if missed and a >= 0.40:
-                fill = max((x for x in tw.rbs() if x.name != p.name), key=lambda x: x.carries, default=None)
-                tail = (f" {fill.name} took {pct(fill.rush_share)} of the carries this week. If {p.name} sits again, "
-                        f"{fill.name} is the add.") if fill and fill.carries else ""
-                S.append(Signal("rb_missed", 8, p.name, f"{p.name}: {pct(a)} rush share early, missed {missed}",
+                # who carried the load in the latest game (works for the week view and the rolling view)
+                last = lambda x: (x.wk_rush[-1] or 0) if x.wk_rush else x.rush_share  # noqa: E731
+                pool = w.rbs() if w is not None else tw.rbs()
+                fill = max((x for x in pool if x.name != p.name), key=last, default=None)
+                tail = (f" {fill.name} took {pct(last(fill))} of the carries in Week {w.weeks[-1]}. If {p.name} sits "
+                        f"again, {fill.name} is the add.") if fill and last(fill) > 0 else ""
+                S.append(Signal("rb_missed", 10, p.name, f"{p.name}: {pct(a)} rush share early, missed {missed}",
                                 f"{p.name} didn't play in Week {missed[-1]} after taking {pct(a)} of the carries early in this "
                                 f"stretch.{tail}"))
                 break

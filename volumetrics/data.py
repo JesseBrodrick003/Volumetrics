@@ -37,6 +37,8 @@ import polars as pl
 log = logging.getLogger(__name__)
 
 SKILL_POSITIONS = {"WR", "TE", "RB", "FB"}
+POSITION_ALIASES = {"HB": "RB"}
+OL_POSITIONS = {"T", "G", "C", "OL", "OT", "OG"}
 # Red zone = snap inside the opponent's 20 (19 or closer). A throw from exactly the 20
 # is not counted, which matches the reference graphics (e.g. CeeDee Lamb, Wk 4 2026: 2 RZ).
 RED_ZONE_MAX_YARDLINE = 19
@@ -205,6 +207,13 @@ def load_season(season: int) -> dict[str, pl.DataFrame]:
         "teams": nfl.load_teams(),
         "sched": nfl.load_schedules(season),
     }
+    for key, fn in (("pfr_rush", lambda: nfl.load_pfr_advstats(season, stat_type="rush", summary_level="week")),
+                    ("injuries", lambda: nfl.load_injuries(season))):
+        try:
+            frames[key] = fn()
+        except Exception as exc:  # optional extras: charts/notes that need them are skipped
+            log.warning("%s unavailable (%s)", key, exc)
+            frames[key] = None
     try:
         frames["ffo"] = nfl.load_ff_opportunity(season)
     except Exception as exc:  # expected points are a bonus; everything else works without them
@@ -374,11 +383,13 @@ def build_team_week(season: int, week: int, team: str) -> TeamWeek | None:
         if key not in lines:
             info = by_gsis.get(gsis, {}) if gsis else {}
             full = info.get("display_name") or fallback_name
+            pos = fallback_pos or info.get("position") or ""
+            pos = POSITION_ALIASES.get(pos, pos)  # snap data sometimes says "HB" for a running back
             lines[key] = PlayerLine(
                 gsis_id=gsis,
                 name=_short_name(info.get("short_name"), full),
                 full_name=full,
-                position=fallback_pos or info.get("position") or "",
+                position=pos,
                 headshot=info.get("headshot"),
                 headshot_alt=_espn_headshot(info.get("espn_id")),
             )

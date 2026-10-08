@@ -51,39 +51,29 @@ python run_weekly.py --teams CAR DAL --embed # a few teams + one self-contained 
 | `takes.json` | each take plus the signals and evidence that produced it |
 | `manifest.json` | which teams were built, which were missing, when it ran |
 
-## The "Last 4" tab
+## The four tabs
 
-Each team's **four most recent games played** (bye weeks skipped), added together, so every week the
-oldest game drops off and the newest comes in. Shares are totals over those games (a player's targets ÷
-the team's targets across all four), so a game he missed counts as zero. Under each card, a small table
-shows the top five receivers' target share game by game, shaded by size, so you can see who's rising
-or fading. The takes there look for trends: who's owned the role every week, whose share is climbing or
-slipping between the first and last two games, snap shares growing, and who's getting the red-zone looks.
-Change the window with `--window` (e.g. `--window 3`).
+1. **Week N Targets**: target-share donut + snap % bars for every team, with the take underneath.
+2. **Week N Backfield**: the top 8 rushers of the week, four league-wide charts, then every team's backfield
+   (carry-share donut + snap / rush / target bars per back) with an RB take.
+3. **Trends (rolling 4)**: each team's last 4 games played, byes skipped, so the oldest game drops off weekly.
+   A switch flips between **Targets** (rolling donut + bars + target share by week) and **Backfield** (top 8
+   rushers over the span, the same four league charts, each team's rolling backfield + rush share by week).
+   **O-line injury notes** sit at the bottom: starting linemen who missed time, the injury from the official
+   report, and how they're practicing for the next game.
+4. **Risers & Fallers (buy / sell)**: biggest usage moves over the window, tagged Waiver add / Buy / Buy low /
+   Sell / Watch, filterable by RB / WR / TE.
 
-## The "RBs" tab
+### League-wide backfield charts (Week N Backfield and Trends → Backfield)
 
-Built around what running-back analysts actually use, because carries alone undersell or oversell backs:
+| Chart | X | Y | What it shows |
+|---|---|---|---|
+| Efficiency vs. volume | RB carries per game | EPA per rush | efficient workhorses vs. teams forcing the run |
+| Rushing vs. receiving | rush success rate | RB share of team targets | which backfields help in both phases |
+| Blocked vs. created | yards before contact / carry | + yards after contact / carry | the line's work vs. the back's (PFR) |
+| Who owns the backfield | each back's share of RB carries + targets | | workhorse vs. committee, plus RB1's carries inside the 5 |
 
-- **Sortable RB table, every team** (this week or last 4): snap %, **rush share** (his share of the team's
-  designed carries), target share, **Opp %** (his share of the backfield's carries + targets), carries,
-  targets, **HVT** (high-value touches = catches + carries inside the 10, Ben Gretch's definition),
-  **GL** (carries inside the 5), **xFP** (expected PPR points from his usage, nflverse's ffopportunity model:
-  the best single read on RB value) and actual PPR. Sorted by xFP; tap any column to re-sort.
-- **Backfield card per team**: carry-share donut (with yards and goal-line carries under each back) plus
-  snap / rush / target bars side by side for each back, with carries, HVT and xFP under his name.
-- **Rush share by week** for the last 4 games under each card.
-- **The take** looks for workhorse vs. committee vs. lead back, the passing-down back, the goal-line back,
-  high-value touches vs. empty volume, points vs. expected (buy-low / regression), and carry trends.
-
-## The "Movers" tab
-
-League-wide risers and fallers over the rolling window: the last 2 games vs. the first 2, only games
-played. Receivers and tight ends by target share, running backs by backfield share, ranked so a big
-WR jump and a big RB jump compare fairly. Each player shows the before/after, snaps, xFP per game, a
-game-by-game sparkline and a tag: **Waiver add** (barely used early, real role now), **Buy**, **Buy low**
-(looks dipped, snaps held), **Sell** (snaps and looks both shrinking) or **Watch**. Players who missed
-the latest game are left out (that's an injury question). Filter by RB / WR / TE. Full list in `movers.json`.
+Team logos are the dots; quadrant lines sit at the league median.
 
 ## How the numbers are defined (`volumetrics/data.py`)
 

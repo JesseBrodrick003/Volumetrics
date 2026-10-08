@@ -33,7 +33,7 @@ CSS = """
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
       color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:calc(112px + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%%}
+html{scroll-padding-top:calc(128px + env(safe-area-inset-top,0px));-webkit-text-size-adjust:100%%}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 17px/1.55 Jost,"Avenir Next",Futura,system-ui,sans-serif;
      -webkit-font-smoothing:antialiased}
 a{color:inherit}
@@ -110,6 +110,51 @@ nav a[aria-current="true"]{color:var(--ink);border-color:var(--team);background:
       box-shadow:0 0 14px color-mix(in srgb,var(--team) 45%%,transparent)}
 nav a:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
 .panel-h{font-size:15px;font-weight:500;color:var(--muted);margin:22px 0 0;text-align:center}
+
+/* Tabs with two-line labels */
+.tabs button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;line-height:1.15;padding:7px 4px}
+.tabs .t1{font-size:11.5px;color:var(--faint);font-weight:500;letter-spacing:.02em}
+.tabs .t2{font-size:14.5px;font-weight:600;white-space:normal;text-align:center}
+.tabs button[aria-selected="true"] .t1{color:color-mix(in srgb,var(--bg) 60%%,var(--ink))}
+@media (max-width:720px){.tabs .t2{font-size:13.5px}.tab-mv .t1{display:none}}
+.row2{display:flex;align-items:center;gap:8px;margin-top:8px}
+.row2 nav{margin:0 -18px 0 0;padding:0 18px 0 0;flex:1;min-width:0}
+.subsw{display:inline-grid;grid-template-columns:1fr 1fr;flex:none;background:var(--raise);border:1px solid var(--line);
+       border-radius:10px;padding:3px;gap:2px}
+.subsw[hidden]{display:none}
+.subsw button{font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:8px;
+       padding:7px 10px;cursor:pointer}
+.subsw button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.subsw button:focus-visible,.chart-tabs button:focus-visible{outline:2px solid var(--banner);outline-offset:2px}
+.sub[hidden]{display:none}
+.sec-h{font:800 22px/1 "Big Shoulders",Impact,sans-serif;letter-spacing:.05em;text-transform:uppercase;margin:26px 0 10px;color:var(--ink)}
+
+/* Top 8 + league charts + O-line notes */
+.top8{margin-top:16px}
+.tbl-fit{max-height:none}
+.tbl-fit .lbt{font-size:13.5px}
+.tbl-fit .lbt th,.tbl-fit .lbt td{padding:9px 5px}
+.tbl-fit .lbt th.pl,.tbl-fit .lbt td.pl{padding-left:10px}
+.tbl-fit .pl{min-width:7.6em}
+.tbl-fit .pl img{width:18px;height:18px}
+.chart-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--raise);border:1px solid var(--line);
+       border-radius:12px;padding:3px;margin-bottom:10px}
+.chart-tabs button{font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);background:none;border:0;border-radius:9px;
+       padding:8px 4px;cursor:pointer}
+.chart-tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+figure.lg{margin:0}
+figure.lg[hidden]{display:none}
+figure.lg img{display:block;width:100%%;height:auto;border-radius:12px}
+figure.lg figcaption{color:var(--muted);font-size:14.5px;line-height:1.55;margin:10px 2px 0;max-width:66ch}
+figure.lg figcaption b{color:var(--ink);font-weight:600}
+@media (min-width:721px){figure.lg img{max-width:640px;margin:0 auto}}
+@media (max-width:720px){figure.lg img{border-radius:0;margin:0 -14px;width:calc(100%% + 28px);max-width:none}}
+.oline{margin-top:28px;padding-top:4px;border-top:1px solid var(--line)}
+.ol-list{list-style:none;margin:10px 0 0;padding:0}
+.ol-list li{display:grid;grid-template-columns:4.6em 1fr;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px;line-height:1.5}
+.ol-team{display:flex;align-items:center;gap:7px;font-weight:600}
+.ol-team img{width:22px;height:22px;object-fit:contain}
+.ol-notes{color:var(--ink)}
 
 /* RB leaderboard */
 .lb{margin:20px 0 6px}
@@ -209,41 +254,50 @@ footer{color:var(--faint);font-size:13px;margin-top:28px;line-height:1.6}
 JS = """
 (()=>{const panels={};document.querySelectorAll('.panel').forEach(p=>panels[p.id.slice(2)]=p);
 const tabs=[...document.querySelectorAll('.tabs button')];const nav=document.querySelector('nav');
+const subsw=document.querySelector('.subsw');const subBtns=subsw?[...subsw.querySelectorAll('button')]:[];
 const chips=[...nav.querySelectorAll('a')];const chip=t=>chips.find(a=>a.dataset.team===t);
-const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;let view='wk',cur=null;
-const sec=(t,v)=>document.getElementById(v==='wk'?t:t+'-'+v);
+const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;let view='wk',sub='tgt',cur=null;
+const suffix=()=>view==='wk'?'':view==='rb'?'-rb':view==='tr'?(sub==='bf'?'-l4rb':'-l4'):null;
+const sec=t=>{const s=suffix();return s===null?null:document.getElementById(t+s);};
 function mark(t){const a=chip(t);if(!a||a===cur)return;if(cur)cur.removeAttribute('aria-current');
  a.setAttribute('aria-current','true');cur=a;nav.scrollTo({left:a.offsetLeft-nav.offsetLeft-nav.clientWidth/2+a.clientWidth/2,behavior:rm?'auto':'smooth'});}
+function setSub(sv){sub=sv;subBtns.forEach(b=>b.setAttribute('aria-pressed',b.dataset.sub===sv?'true':'false'));
+ if(panels.tr)panels.tr.querySelectorAll(':scope > .sub').forEach(d=>d.hidden=d.dataset.sub!==sv);}
 function apply(v){view=v;for(const k in panels)panels[k].hidden=k!==v;
- tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));nav.hidden=(v==='mv');}
-function show(v,keepTeam){if(!panels[v])return;apply(v);
- const t=keepTeam&&cur&&v!=='mv'?cur.dataset.team:null;const target=(t&&sec(t,v))||panels[v];
- target.scrollIntoView({block:'start'});history.replaceState(null,'',t&&sec(t,v)?'#'+sec(t,v).id:(v==='wk'?'#':'#'+v));}
-tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.view,true)));
-chips.forEach(a=>a.addEventListener('click',e=>{const s=sec(a.dataset.team,view);if(!s)return;e.preventDefault();
+ tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));
+ nav.hidden=(v==='mv');if(subsw)subsw.hidden=(v!=='tr');}
+function go(keepTeam){const t=keepTeam&&cur?cur.dataset.team:null;const target=(t&&sec(t))||panels[view];
+ target.scrollIntoView({block:'start'});const tag=view==='tr'&&sub==='bf'?'tr-bf':view;
+ history.replaceState(null,'',t&&sec(t)?'#'+sec(t).id:(view==='wk'?'#':'#'+tag));}
+tabs.forEach(b=>b.addEventListener('click',()=>{apply(b.dataset.view);go(true);}));
+subBtns.forEach(b=>b.addEventListener('click',()=>{setSub(b.dataset.sub);go(true);}));
+chips.forEach(a=>a.addEventListener('click',e=>{const s=sec(a.dataset.team);if(!s)return;e.preventDefault();
  s.scrollIntoView({behavior:rm?'auto':'smooth',block:'start'});history.replaceState(null,'','#'+s.id);mark(a.dataset.team);}));
 const io=new IntersectionObserver(es=>{for(const e of es)if(e.isIntersecting)mark(e.target.dataset.team);},
  {rootMargin:'-35% 0px -60% 0px'});document.querySelectorAll('section[data-team]').forEach(s=>io.observe(s));
-document.querySelectorAll('a[href^="#"]:not(nav a)').forEach(a=>a.addEventListener('click',e=>{const id=a.hash.slice(1);
- const el=document.getElementById(id);if(!el)return;const p=el.closest('.panel');if(p&&p.hidden){apply(p.id.slice(2));}}));
-/* sortable tables: tap a column header */
+document.querySelectorAll('main a[href^="#"]').forEach(a=>a.addEventListener('click',()=>{const el=document.getElementById(a.hash.slice(1));
+ if(!el)return;const p=el.closest('.panel');if(p&&p.hidden)apply(p.id.slice(2));const sd=el.closest('.sub');if(sd&&sd.hidden)setSub(sd.dataset.sub);}));
+/* sortable tables */
 document.querySelectorAll('table.sortable').forEach(tb=>{const ths=[...tb.tHead.rows[0].cells];
  ths.forEach((th,i)=>{const b=th.querySelector('button');if(!b)return;b.addEventListener('click',()=>{
   const dir=th.getAttribute('aria-sort')==='descending'?'ascending':'descending';ths.forEach(x=>x.removeAttribute('aria-sort'));
-  th.setAttribute('aria-sort',dir);const rows=[...tb.tBodies[0].rows];const val=r=>{const c=r.cells[i];const v=parseFloat(c.dataset.v);return isNaN(v)?-1e9:v;};
+  th.setAttribute('aria-sort',dir);const rows=[...tb.tBodies[0].rows];const val=r=>{const v=parseFloat(r.cells[i].dataset.v);return isNaN(v)?-1e9:v;};
   rows.sort((x,y)=>dir==='descending'?val(y)-val(x):val(x)-val(y));rows.forEach(r=>tb.tBodies[0].appendChild(r));});});});
-/* segmented toggles (RB table: this week / last 4) */
-document.querySelectorAll('.seg').forEach(g=>{const bs=[...g.querySelectorAll('button')];bs.forEach(b=>b.addEventListener('click',()=>{
- bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));const root=g.closest('.lb');
- root.querySelectorAll('.tbl').forEach(t=>t.hidden=t.dataset.lb!==b.dataset.lb);}));});
+/* league chart switcher */
+document.querySelectorAll('.chart-tabs').forEach(g=>{const bs=[...g.querySelectorAll('button')];bs.forEach(b=>b.addEventListener('click',()=>{
+ bs.forEach(x=>{x.setAttribute('aria-pressed',x===b?'true':'false');const f=document.getElementById(x.dataset.chart);if(f)f.hidden=x!==b;});}));});
 /* movers position filter */
 document.querySelectorAll('.filters').forEach(g=>{const bs=[...g.querySelectorAll('button')];const root=g.closest('.panel');
  const run=pos=>{root.querySelectorAll('ol.movers').forEach(ol=>{let shown=0;ol.querySelectorAll('li').forEach(li=>{
   const ok=pos==='all'?li.dataset.all==='1':(li.dataset.pos===pos&&+li.dataset.pr<=8);li.hidden=!ok;if(ok)shown++;});
   const em=ol.nextElementSibling;if(em&&em.classList.contains('mv-empty'))em.hidden=shown>0;});};
  bs.forEach(b=>b.addEventListener('click',()=>{bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));run(b.dataset.pos);}));run('all');});
-const h=location.hash.slice(1);let start='wk';if(panels[h])start=h;else{const m=h.match(/-(l4|rb)$/);if(m&&panels[m[1]])start=m[1];}
-apply(start);if(h&&!panels[h]){const s=document.getElementById(h);if(s)s.scrollIntoView({block:'start'});}})();
+/* start view from the link: #rb #tr #tr-bf #mv, a team (#CAR, #CAR-rb, #CAR-l4, #CAR-l4rb); old #l4 links -> trends */
+const h=location.hash.slice(1);let v='wk',sv='tgt';
+if(h==='l4'||h==='tr')v='tr';else if(h==='tr-bf'){v='tr';sv='bf';}else if(panels[h])v=h;
+else if(/-l4rb$/.test(h)){v='tr';sv='bf';}else if(/-l4$/.test(h))v='tr';else if(/-rb$/.test(h))v='rb';
+if(!panels[v])v='wk';setSub(sv);apply(v);
+if(h&&!panels[h]&&!['l4','tr','tr-bf'].includes(h)){const s=document.getElementById(h);if(s)s.scrollIntoView({block:'start'});}})();
 """
 
 
@@ -478,6 +532,92 @@ def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
     )
 
 
+
+TOP8_COLS = (  # (header, key, kind, tooltip)
+    ("Car", "car", "int", "Carries"),
+    ("Yds", "yds", "int", "Rushing yards"),
+    ("Rush", "rush", "pct", "Rush share: his share of the team's carries"),
+    ("Snap", "snap", "pct", "Snap share: his share of the team's offensive snaps"),
+    ("HVT", "hvt", "int", "High-value touches: catches + carries inside the 10"),
+    ("xFP", "xfp", "dec", "Expected PPR points from his usage"),
+)
+
+
+def _top8(rows: list[dict], logos: dict, per_game: bool) -> str:
+    rows = sorted(rows, key=lambda r: (-r["car"], -(r["xfp"] or 0)))[:8]
+    head = '<th scope="col" class="pl">Top 8 rushers</th>' + "".join(
+        f'<th scope="col" title="{html.escape(tip)}"{" aria-sort=" + chr(34) + "descending" + chr(34) if k == "car" else ""}>'
+        f'<button type="button">{h + ("/g" if per_game and k == "xfp" else "")}</button></th>'
+        for h, k, _, tip in TOP8_COLS)
+    body = ""
+    for r in rows:
+        cells = ""
+        for _, k, kind, _ in TOP8_COLS:
+            v = r.get(k)
+            if v is None:
+                cells += '<td data-v="">\u2013</td>'
+                continue
+            txt = f"{v:.0%}" if kind == "pct" else (f"{v:.1f}" if kind == "dec" else f"{v}")
+            cells += f'<td data-v="{v}"{" class=hi" if k == "car" else ""}>{txt}</td>'
+        anchor = f'{r["team"]}-{"l4rb" if per_game else "rb"}'
+        body += (f'<tr><th scope="row" class="pl"><a href="#{anchor}" title="{html.escape(r["full_name"])}">'
+                 f'{_logo_img(r["team"], logos, 20)}{html.escape(r["name"])}</a></th>{cells}</tr>')
+    note = ("Carries and yards are totals over the span; xFP/g is per game played. " if per_game else "")
+    return (f'<div class="top8"><div class="tbl tbl-fit"><table class="lbt sortable"><thead><tr>{head}</tr></thead>'
+            f'<tbody>{body}</tbody></table></div>'
+            f'<p class="lb-note">{note}Tap a back to jump to his team, or a column to re-sort. '
+            f'HVT = catches plus carries inside the 10. xFP = the PPR points an average back would score on that '
+            f'workload.</p></div>')
+
+
+CHART_TABS = {"quad-volume": "Volume", "quad-dual": "Run vs. pass", "split": "Blocking", "shares": "Splits"}
+
+
+def _league(charts: list[dict], embed: bool, uid: str) -> str:
+    """The four league-wide charts behind a small switcher, one visible at a time."""
+    if not charts:
+        return ""
+    btns = "".join(
+        f'<button type="button" data-chart="{uid}-{c["key"]}" aria-pressed="{"true" if i == 0 else "false"}">'
+        f'{CHART_TABS.get(c["key"], c["title"])}</button>' for i, c in enumerate(charts))
+    figs = ""
+    for i, c in enumerate(charts):
+        src = c["rel"]
+        if embed:
+            im = Image.open(c["path"]).convert("RGB")
+            im.thumbnail((900, 2400))
+            buf = io.BytesIO()
+            im.save(buf, "WEBP", quality=74, method=6)
+            src = "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
+        img = f'<img src="{src}" alt="{html.escape(c["title"])}" loading="lazy">'
+        if not embed:
+            img = f'<a href="{c["rel"]}" aria-label="Open full size">{img}</a>'
+        figs += (f'<figure class="lg" id="{uid}-{c["key"]}"{" hidden" if i else ""}>{img}'
+                 f'<figcaption><b>How to read it.</b> {html.escape(c["how"])}</figcaption></figure>')
+    return (f'<div class="league"><h3 class="sec-h">League view</h3>'
+            f'<div class="chart-tabs" role="group" aria-label="Chart">{btns}</div>{figs}</div>')
+
+
+def _oline(notes: list[dict], logos: dict, week: int) -> str:
+    from .league import note_text
+    if not notes:
+        return ""
+    items = "".join(
+        f'<li><span class="ol-team">{_logo_img(t["team"], logos, 22)}{t["team"]}</span>'
+        f'<span class="ol-notes">{"<br>".join(html.escape(note_text(n, week)) for n in t["notes"])}</span></li>'
+        for t in notes)
+    return (f'<section class="oline" aria-labelledby="ol-h"><h3 class="sec-h" id="ol-h">O-line injury notes</h3>'
+            f'<p class="lb-note">Starting linemen (80%+ of snaps when playing) who missed time over each team\'s last '
+            f'games, with the injury from the official report and how they\'re practicing for Week {week + 1} when that '
+            f'report is out. Lines missing starters tend to show up as short teal bars in the Blocking chart.</p>'
+            f'<ul class="ol-list">{items}</ul></section>')
+
+
+def _bf_block(p: dict, week: int, embed: bool, logos: dict, suffix: str, uid: str) -> str:
+    return (_top8(p["top8"], logos, p["per_game"]) + _league(p.get("charts", []), embed, uid)
+            + '<h3 class="sec-h">Team by team</h3>' + _sections(p["entries"], week, embed, suffix))
+
+
 def _sections(entries: list[dict], week: int, embed: bool, suffix: str) -> str:
     out = []
     for e in entries:
@@ -511,7 +651,12 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
         "display": _font_src("BigShouldersDisplay-ExtraBold", embed, rel_assets, full=True),
         "embed_css": "@media (min-width:721px){.card{max-width:520px;margin:0 auto}}" if embed else "",
     }
-    teams = {e["team"]: e for p in panels for e in p["entries"]}
+    def all_entries(p):
+        if p.get("kind") == "tr":
+            return p["tgt"]["entries"] + p["bf"]["entries"]
+        return p.get("entries", [])
+
+    teams = {e["team"]: e for p in panels for e in all_entries(p)}
     order = sorted(teams.values(), key=lambda e: e["team_name"])
     nav = "".join(
         f'<a href="#{e["team"]}" data-team="{e["team"]}" style="--team:{e["color"]}" '
@@ -521,20 +666,31 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
     )
     tabs = "".join(
         f'<button type="button" role="tab" data-view="{p["key"]}" aria-controls="p-{p["key"]}" '
-        f'aria-selected="{"true" if i == 0 else "false"}">{html.escape(p["label"])}</button>'
+        f'aria-selected="{"true" if i == 0 else "false"}" class="tab-{p["key"]}">'
+        f'<span class="t1">{html.escape(p.get("t1", ""))}</span><span class="t2">{html.escape(p.get("t2", p["label"]))}</span>'
+        f'</button>'
         for i, p in enumerate(panels)
     )
+    has_tr = any(p.get("kind") == "tr" for p in panels)
+    subsw = ('<div class="subsw" role="group" aria-label="Trends view" hidden>'
+             '<button type="button" data-sub="tgt" aria-pressed="true">Targets</button>'
+             '<button type="button" data-sub="bf" aria-pressed="false">Backfield</button></div>') if has_tr else ""
     body = ""
     for p in panels:
         kind = p.get("kind", "cards")
-        if kind == "rb":
-            inner = _rb_panel(p, week, embed, logos)
+        if kind == "bf":
+            inner = _bf_block(p, week, embed, logos, "-rb", "wkc")
+        elif kind == "tr":
+            t, b = p["tgt"], p["bf"]
+            inner = (f'<div class="sub" data-sub="tgt">{_leaders_html(t.get("leaders"), t.get("leaders_title", ""), logos)}'
+                     f'{_sections(t["entries"], week, embed, "-l4")}</div>'
+                     f'<div class="sub" data-sub="bf" hidden>{_bf_block(b, week, embed, logos, "-l4rb", "trc")}</div>'
+                     f'{_oline(p.get("oline", []), logos, week)}')
         elif kind == "mv":
             inner = _movers_panel(p, logos, embed)
         else:
-            suffix = "" if p["key"] == "wk" else f"-{p['key']}"
             inner = (f'{_leaders_html(p.get("leaders"), p.get("leaders_title", ""), logos)}'
-                     f'{_sections(p["entries"], week, embed, suffix)}')
+                     f'{_sections(p["entries"], week, embed, "")}')
         body += (f'<div class="panel" id="p-{p["key"]}" role="tabpanel" aria-label="{html.escape(p["label"])}">'
                  f'<h2 class="panel-h">{html.escape(p.get("heading", p["label"]))}</h2>{inner}</div>')
 
@@ -556,7 +712,7 @@ def build_page(season: int, week: int, panels: list[dict], out_file: Path, *, em
 <body><div class="wrap">
 {hero(f"Week {week}", f"{season} Season", "Target share and snap % for every team")}
 <div class="bar"><div class="tabs" role="tablist" aria-label="View" style="--n:{len(panels)}">{tabs}</div>
-<nav aria-label="Jump to a team">{nav}</nav></div>
+<div class="row2">{subsw}<nav aria-label="Jump to a team">{nav}</nav></div></div>
 <main>{body}</main>
 <footer>{miss}
 <p>RB numbers: rush share counts designed runs (no QB scrambles or kneels). xFP is nflverse's expected PPR points
