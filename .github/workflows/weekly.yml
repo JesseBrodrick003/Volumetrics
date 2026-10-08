@@ -10,6 +10,11 @@ on:
       week:   { description: "Week(s), e.g. 5 or 2 3 4 (blank = latest completed)", required: false }
       email:  { description: "Send the email", type: boolean, default: true }
       force:  { description: "Rebuild even if already built", type: boolean, default: false }
+      send_to:
+        description: "Who gets the email"
+        type: choice
+        options: ["everyone", "only the people in EMAIL_NEW"]
+        default: "everyone"
 
 permissions:
   contents: write   # commit the report into docs/
@@ -42,6 +47,9 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}   # optional: Claude voice pass
           VOLUMETRICS_BRAND: ${{ vars.VOLUMETRICS_BRAND }}      # optional: your handle on every chart
+          ESPN_LEAGUE_ID: ${{ secrets.ESPN_LEAGUE_ID }}         # optional: your ESPN league (private leagues
+          ESPN_S2: ${{ secrets.ESPN_S2 }}                       #   also need these two browser cookies)
+          ESPN_SWID: ${{ secrets.ESPN_SWID }}
         run: |
           ARGS="--skip-if-exists"
           if [ -n "${{ inputs.season }}" ]; then ARGS="$ARGS --season ${{ inputs.season }}"; fi
@@ -78,6 +86,7 @@ jobs:
           SMTP_USER: ${{ vars.EMAIL_FROM }}                    # your iCloud address
           SMTP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}    # iCloud app-specific password
           EMAIL_TO: ${{ secrets.EMAIL_TO }}                    # friends, comma separated
+          EMAIL_NEW: ${{ secrets.EMAIL_NEW }}                  # one-off catch-up list (see README)
         run: |
           URL="${{ steps.deployment.outputs.page_url }}${{ steps.report.outputs.path }}"
           WEEK="${{ steps.report.outputs.week }}"
@@ -86,6 +95,12 @@ jobs:
             NOTE="Still waiting on snap counts for: ${{ steps.report.outputs.missing }}. The Wednesday run adds them."
           fi
           if [ -n "$SMTP_PASSWORD" ] && [ -n "$SMTP_USER" ]; then
+            if [ "${{ inputs.send_to }}" = "only the people in EMAIL_NEW" ]; then
+              # Catch-up: just the new people, one email each; nobody else gets it again
+              python send_email.py --season "${{ steps.report.outputs.season }}" --week "$WEEK" --url "$URL" \
+                --list-env EMAIL_NEW --individual
+              exit 0
+            fi
             # Real email from your iCloud: you + everyone in EMAIL_TO (BCC)
             python send_email.py --season "${{ steps.report.outputs.season }}" --week "$WEEK" --url "$URL" --note "$NOTE"
           else

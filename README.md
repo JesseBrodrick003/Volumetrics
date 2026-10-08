@@ -88,6 +88,25 @@ get Waiver add / Buy / Sell; thin or mixed ones are tagged Watch. Each card list
   broken tackles (PFR), expected points per game.
 - **Routes are estimated** (snap share x team dropbacks): route participation isn't public for 2026.
 
+## Send a week to someone new (without re-sending to everyone)
+
+1. Settings → Secrets and variables → Actions → New repository secret `EMAIL_NEW` with just the new
+   people's addresses (commas between them).
+2. Actions → Weekly Volumetrics → Run workflow: Week = the week to send, Send the email = on,
+   Who gets the email = "only the people in EMAIL_NEW". Each new person gets their own copy; nobody
+   else gets it again.
+3. Add them to `EMAIL_TO` so they're on the list every Tuesday, and clear `EMAIL_NEW`.
+
+## Your ESPN league
+
+Add three repo secrets: `ESPN_LEAGUE_ID` (the number after `leagueId=` in your league's URL), and for a
+private league the `espn_s2` and `SWID` cookies from a logged-in desktop browser (DevTools → Application →
+Cookies → espn.com). Risers & Fallers then marks every player Available / Your team / Rostered, adds
+Available and My team filters, and makes the tags actionable: a backed riser is a Waiver add only if he's
+available, a Trade target if he's on someone else's roster, a Hold if he's yours. The cookies expire about
+once a year; if the league layer disappears, copy fresh ones. Only availability shows on the site; other
+teams' names and rosters are never published.
+
 ## Add it to your home screen
 
 The site ships a web-app manifest and icons, so "Add to Home Screen" on iPhone (Share menu) or

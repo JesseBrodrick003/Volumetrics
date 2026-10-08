@@ -32,8 +32,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 
 
-def recipients() -> list[str]:
-    raw = os.getenv("EMAIL_TO", "")
+def recipients(env: str = "EMAIL_TO") -> list[str]:
+    raw = os.getenv(env, "")
     found = re.findall(r"[^\s,;<>]+@[^\s,;<>]+\.[A-Za-z]{2,}", raw)
     seen, out = set(), []
     for a in found:
@@ -107,19 +107,33 @@ def main() -> int:
     ap.add_argument("--url", required=True)
     ap.add_argument("--note", default="")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--list-env", default="EMAIL_TO",
+                    help="which secret holds the recipients (EMAIL_NEW = just people who haven't gotten it)")
+    ap.add_argument("--individual", action="store_true",
+                    help="one email per person, addressed to them, and no copy to you")
     a = ap.parse_args()
 
     sender = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "").strip()
-    bcc = [r for r in recipients() if r.lower() != sender.lower()]
-    msg = build(a.season, a.week, a.url, sender or "you@example.com", bcc, a.note)
+    people = [r for r in recipients(a.list_env) if r.lower() != sender.lower()]
+    if a.individual:  # catch-up sends: each person gets their own copy, nobody else is on it
+        msgs = []
+        for r in people:
+            m = build(a.season, a.week, a.url, sender or "you@example.com", [], a.note)
+            m.replace_header("To", r)
+            msgs.append(m)
+    else:  # weekly send: you in To, everyone else BCC'd
+        msgs = [build(a.season, a.week, a.url, sender or "you@example.com", people, a.note)]
 
     if a.dry_run:
-        print(msg.get_body(("plain",)).get_content())
-        print(f"[dry run] would send to {sender or '(no sender set)'} + {len(bcc)} BCC")
+        print(msgs[0].get_body(("plain",)).get_content() if msgs else "(nobody to send to)")
+        print(f"[dry run] {len(msgs)} message(s), {len(people)} recipient(s) from {a.list_env}")
         return 0
     if not sender or not password:
         print("SMTP_USER / SMTP_PASSWORD not set; not sending.", file=sys.stderr)
+        return 1
+    if not people and a.individual:
+        print(f"{a.list_env} is empty; nothing to send.", file=sys.stderr)
         return 1
 
     host = os.getenv("SMTP_HOST", "smtp.mail.me.com")
@@ -127,9 +141,11 @@ def main() -> int:
     with smtplib.SMTP(host, port, timeout=30) as s:
         s.starttls(context=ssl.create_default_context())
         s.login(sender, password)
-        s.send_message(msg)
+        for m in msgs:
+            s.send_message(m)
     # Counts only: the repo is public, so addresses never go in the log
-    print(f"Sent Week {a.week} email to you + {len(bcc)} friend(s).")
+    who = f"{len(people)} new person(s)" if a.individual else f"you + {len(people)} friend(s)"
+    print(f"Sent Week {a.week} email to {who}.")
     return 0
 
 

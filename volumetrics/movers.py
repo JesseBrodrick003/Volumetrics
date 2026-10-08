@@ -58,6 +58,7 @@ class Mover:
     weeks: list = field(default_factory=list)
     tag: str = ""
     ev: dict = field(default_factory=dict)  # evidence: grade, support chips, counter chips
+    league: str | None = None  # your ESPN league: "available" | "mine" | "rostered" | None
 
     @property
     def delta(self) -> float:
@@ -149,3 +150,18 @@ def rank(all_movers: list[Mover]) -> tuple[list[dict], list[dict]]:
     risers = sorted((m for m in all_movers if m.delta > 0), key=lambda m: -m.score)
     fallers = sorted((m for m in all_movers if m.delta < 0), key=lambda m: m.score)
     return build(risers), build(fallers)
+
+
+def apply_league(items: list[dict], league: dict | None) -> None:
+    """Make the tags actionable for YOUR league: you can only add a free agent, you trade for
+    someone else's player, and a riser you already have is a hold."""
+    from .espn import status
+    if not league:
+        return
+    for it in items:
+        m = it["m"]
+        m.league = status(league, m.player.espn_id)
+        if m.delta > 0 and m.tag in ("Waiver add", "Buy"):
+            m.tag = {"available": "Waiver add", "rostered": "Trade target", "mine": "Hold"}.get(m.league, m.tag)
+        elif m.delta < 0 and m.tag == "Buy low" and m.league == "available":
+            m.tag = "Stash"

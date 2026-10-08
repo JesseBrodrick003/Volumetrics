@@ -216,6 +216,11 @@ def main(argv=None) -> int:
 
         # ---- Risers & fallers (buy / sell) ----
         risers, fallers = M.rank(movers_all)
+        from volumetrics import espn
+        league_data = espn.fetch(season)  # None unless ESPN secrets are set; never fails the build
+        if league_data:
+            log.info("ESPN league connected: %d rostered players", len(league_data["players"]))
+        M.apply_league(risers + fallers, league_data)
         if risers or fallers:
             av_dir = out_dir / "img" / "movers"
             av_dir.mkdir(parents=True, exist_ok=True)
@@ -230,12 +235,14 @@ def main(argv=None) -> int:
                 item["avatar_path"] = path
             panels.append({"key": "mv", "t1": "Buy \u00b7 Sell", "t2": "Risers & Fallers", "label": "Risers & Fallers",
                            "heading": f"Risers & fallers (buy / sell), last {n_l4} games",
-                           "kind": "mv", "entries": [], "risers": risers, "fallers": fallers, "n": n_l4})
+                           "kind": "mv", "entries": [], "risers": risers, "fallers": fallers, "n": n_l4,
+                           "league": ({"name": league_data["name"]} if league_data else None)})
             (out_dir / "movers.json").write_text(json.dumps({
                 k: [{"player": i["m"].player.full_name, "team": i["m"].team, "pos": i["m"].position,
                      "metric": i["m"].metric, "before": round(i["m"].before, 4), "after": round(i["m"].after, 4),
                      "snap_before": i["m"].snap_before, "snap_after": i["m"].snap_after,
-                     "xfp_before": i["m"].xfp_before, "xfp_after": i["m"].xfp_after, "tag": i["m"].tag}
+                     "xfp_before": i["m"].xfp_before, "xfp_after": i["m"].xfp_after, "tag": i["m"].tag,
+                     "evidence": i["m"].ev.get("grade"), "league": i["m"].league}
                     for i in v] for k, v in (("risers", risers), ("fallers", fallers))}, indent=2))
 
     source = "claude" if any(t["source"] == "claude" for t in [*takes.values(), *takes_l4.values()]) else "template"

@@ -249,6 +249,10 @@ ol.movers{list-style:none;margin:0;padding:0}
 .mv-tag{font-size:12px;font-weight:600;letter-spacing:.02em;padding:2px 8px;border-radius:999px;white-space:nowrap}
 .tag-waiver{background:#16d6e8;color:#04161a}.tag-buy{background:#3ddc97;color:#04170e}
 .tag-buylow{background:#ffb02e;color:#1f1300}.tag-sell{background:#ff4d86;color:#22030d}.tag-watch{background:#2a3040;color:var(--ink)}
+.tag-trade{background:#a78bfa;color:#140b2e}.tag-hold{background:#e8edf5;color:#14171d}.tag-stash{background:#ffd27a;color:#1f1300}
+.lg-pill{margin-left:6px;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:999px;border:1px solid currentColor}
+.lg-free{color:#3ddc97}.lg-mine{color:#ffd27a}.lg-taken{color:#8f97a4}
+.lg-sum{margin:12px 0 0;padding:10px 12px;border:1px solid rgba(61,220,151,.35);border-radius:10px;background:rgba(61,220,151,.06);font-size:14.5px}
 .mv-sub{color:var(--muted);font-size:13.5px;display:flex;align-items:center;gap:6px;margin-top:1px}
 .mv-sub img{width:18px;height:18px;object-fit:contain}
 .mv-stat{font-size:15px;margin-top:4px}
@@ -351,7 +355,7 @@ document.querySelectorAll('.chart-tabs').forEach(g=>{const bs=[...g.querySelecto
 /* movers position filter */
 document.querySelectorAll('.filters').forEach(g=>{const bs=[...g.querySelectorAll('button')];const root=g.closest('.panel');
  const run=pos=>{root.querySelectorAll('ol.movers').forEach(ol=>{let shown=0;ol.querySelectorAll(':scope > li').forEach(li=>{
-  const ok=pos==='all'?li.dataset.all==='1':(li.dataset.pos===pos&&+li.dataset.pr<=8);li.hidden=!ok;if(ok)shown++;});
+  const ok=pos==='all'?li.dataset.all==='1':pos==='avail'?li.dataset.league==='available':pos==='mine'?li.dataset.league==='mine':(li.dataset.pos===pos&&+li.dataset.pr<=8);li.hidden=!ok;if(ok)shown++;});
   const em=ol.nextElementSibling;if(em&&em.classList.contains('mv-empty'))em.hidden=shown>0;});};
  bs.forEach(b=>b.addEventListener('click',()=>{bs.forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));run(b.dataset.pos);}));run('all');});
 /* start view from the link: #rb #tr #tr-bf #mv, a team (#CAR, #CAR-rb, #CAR-l4, #CAR-l4rb); old #l4 links -> trends */
@@ -566,7 +570,16 @@ def _spark(series: list, up: bool) -> str:
             f'<line x1="2" y1="37" x2="82" y2="37" stroke="#262b35"/>{lines}{dots}{miss}</svg>')
 
 
-TAG_CLASS = {"Waiver add": "tag-waiver", "Buy": "tag-buy", "Buy low": "tag-buylow", "Sell": "tag-sell", "Watch": "tag-watch"}
+TAG_CLASS = {"Waiver add": "tag-waiver", "Buy": "tag-buy", "Buy low": "tag-buylow", "Sell": "tag-sell", "Watch": "tag-watch",
+             "Trade target": "tag-trade", "Hold": "tag-hold", "Stash": "tag-stash"}
+LEAGUE_PILL = {"available": ("Available", "lg-free"), "mine": ("Your team", "lg-mine"), "rostered": ("Rostered", "lg-taken")}
+
+
+def _league_pill(st: str | None) -> str:
+    if st not in LEAGUE_PILL:
+        return ""
+    label, cls = LEAGUE_PILL[st]
+    return f'<span class="lg-pill {cls}">{label}</span>'
 
 
 def _movers_list(items: list[dict], logos: dict, up: bool, embed: bool) -> str:
@@ -585,13 +598,13 @@ def _movers_list(items: list[dict], logos: dict, up: bool, embed: bool) -> str:
             src = "data:image/webp;base64," + base64.b64encode(Path(it["avatar_path"]).read_bytes()).decode()
         anchor = f"#{m.team}-l4"
         lis += (
-            f'<li data-dir="{"up" if up else "down"}" data-pos="{m.position}" data-all="{1 if it["all"] else 0}" data-pr="{it["pos_rank"]}" '
+            f'<li data-dir="{"up" if up else "down"}" data-league="{m.league or ""}" data-pos="{m.position}" data-all="{1 if it["all"] else 0}" data-pr="{it["pos_rank"]}" '
             f'style="--team:{m.color}">'
             f'<img class="av" src="{src}" alt="" width="56" height="56" loading="lazy">'
             f'<div><div class="mv-top"><a class="mv-name" href="{anchor}" style="text-decoration:none">'
             f'{html.escape(m.player.name)}</a>'
             f'<span class="mv-tag {TAG_CLASS.get(m.tag, "tag-watch")}">{m.tag}</span></div>'
-            f'<div class="mv-sub">{m.position} \u00b7 {_logo_img(m.team, logos, 18)}{m.team}</div>'
+            f'<div class="mv-sub">{m.position} \u00b7 {_logo_img(m.team, logos, 18)}{m.team}{_league_pill(m.league)}</div>'
             f'<div class="mv-stat">{m.metric} <b>{m.before:.0%} \u2192 {m.after:.0%}</b>'
             f'<span class="mv-d {cls}">{arrow}{d}</span></div>'
             f'<div class="mv-meta">{meta}</div>{_evidence_html(m, up)}</div>'
@@ -624,6 +637,19 @@ def _evidence_html(m, up: bool) -> str:
             f'<ul class="chips">{chips or "<li class=con>No supporting stats yet</li>"}</ul>{extra}</div>')
 
 
+def _league_summary(p: dict) -> str:
+    lg = p.get("league")
+    if not lg:
+        return ""
+    items = [i["m"] for i in p["risers"] + p["fallers"]]
+    free = sum(1 for m in items if m.league == "available" and m.delta > 0 and m.tag == "Waiver add")
+    mine_up = sum(1 for m in items if m.league == "mine" and m.delta > 0)
+    mine_dn = sum(1 for m in items if m.league == "mine" and m.delta < 0)
+    return (f'<p class="lg-sum"><b>{html.escape(lg["name"])}</b> connected: '
+            f'{free} backed riser{"s" if free != 1 else ""} on your waiver wire, '
+            f'{mine_up} of your players rising, {mine_dn} falling.</p>')
+
+
 def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
     n = p.get("n", 4)
     k = n // 2
@@ -632,9 +658,11 @@ def _movers_panel(p: dict, logos: dict, embed: bool) -> str:
         f'{k}, counting only games he played. Receivers and tight ends move on target share, running backs on '
         f'backfield share. Then every move is checked against the stats that confirm a real role change, and graded '
         f'<b>Strong</b>, <b>Solid</b> or <b>Thin</b>. Only Strong or Solid moves get a Waiver add, Buy or Sell tag.</p>'
-        '<div class="filters" role="group" aria-label="Position">'
+        + _league_summary(p)
+        + '<div class="filters" role="group" aria-label="Show">'
         + "".join(f'<button type="button" data-pos="{v}" aria-pressed="{"true" if v == "all" else "false"}">{lbl}</button>'
-                  for v, lbl in (("all", "All"), ("RB", "RB"), ("WR", "WR"), ("TE", "TE")))
+                  for v, lbl in ((("all", "All"),) + ((("avail", "Available"), ("mine", "My team")) if p.get("league") else ())
+                                 + (("RB", "RB"), ("WR", "WR"), ("TE", "TE"))))
         + '</div>'
         f'<h3 class="mv-h up">\u25B2 Risers</h3>{_movers_list(p["risers"], logos, True, embed)}'
         f'<h3 class="mv-h down">\u25BC Fallers</h3>{_movers_list(p["fallers"], logos, False, embed)}'

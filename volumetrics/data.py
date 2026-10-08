@@ -57,6 +57,7 @@ class PlayerLine:
     position: str
     headshot: str | None
     headshot_alt: str | None = None  # ESPN headshot, used if the NFL one fails
+    espn_id: str | None = None  # for matching your ESPN fantasy league
     targets: int = 0
     tgt_share: float = 0.0
     rz_targets: int = 0
@@ -392,6 +393,7 @@ def build_team_week(season: int, week: int, team: str) -> TeamWeek | None:
                 position=pos,
                 headshot=info.get("headshot"),
                 headshot_alt=_espn_headshot(info.get("espn_id")),
+                espn_id=info.get("espn_id"),
             )
         return lines[key]
 
@@ -591,7 +593,7 @@ def build_team_window(season: int, week: int, team: str, n: int = 4) -> Window |
             if key not in agg:
                 agg[key] = PlayerLine(
                     gsis_id=p.gsis_id, name=p.name, full_name=p.full_name, position=p.position,
-                    headshot=p.headshot, headshot_alt=p.headshot_alt,
+                    headshot=p.headshot, headshot_alt=p.headshot_alt, espn_id=p.espn_id,
                     wk_share=[None] * len(games), wk_snap=[None] * len(games), wk_targets=[0] * len(games),
                     wk_rush=[None] * len(games), wk_bf=[None] * len(games), wk_xfp=[None] * len(games),
                 )
