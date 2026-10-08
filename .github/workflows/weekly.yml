@@ -13,7 +13,7 @@ permissions:
   contents: write   # commit the report into docs/
   pages: write      # publish docs/ to GitHub Pages
   id-token: write   # required by deploy-pages
-  issues: write     # the weekly "report is up" issue, which GitHub emails to you
+  issues: write     # fallback notification if iCloud email isn't set up
 
 concurrency:
   group: volumetrics
@@ -68,19 +68,27 @@ jobs:
         if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         uses: actions/deploy-pages@v4
 
-      - name: Email me the link (GitHub notification to the repo owner)
+      - name: Email the link
         if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
+          SMTP_USER: ${{ vars.EMAIL_FROM }}                    # your iCloud address
+          SMTP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}    # iCloud app-specific password
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}                    # friends, comma separated
         run: |
           URL="${{ steps.deployment.outputs.page_url }}${{ steps.report.outputs.path }}"
           WEEK="${{ steps.report.outputs.week }}"
           NOTE=""
           if [ "${{ steps.report.outputs.complete }}" != "true" ]; then
-            NOTE=$'\n\nStill waiting on snap counts for: ${{ steps.report.outputs.missing }}. The Wednesday run adds them.'
+            NOTE="Still waiting on snap counts for: ${{ steps.report.outputs.missing }}. The Wednesday run adds them."
           fi
-          BODY="@${GITHUB_REPOSITORY_OWNER} Week ${WEEK} Volumetrics is up: ${URL}${NOTE}"
-          gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "📊 Week ${WEEK} Volumetrics is up" \
-            --body "$BODY" \
-            --assignee "$GITHUB_REPOSITORY_OWNER"
+          if [ -n "$SMTP_PASSWORD" ] && [ -n "$SMTP_USER" ]; then
+            # Real email from your iCloud: you + everyone in EMAIL_TO (BCC)
+            python send_email.py --season "${{ steps.report.outputs.season }}" --week "$WEEK" --url "$URL" --note "$NOTE"
+          else
+            # Fallback: an issue that @mentions you; GitHub emails it to your notification address
+            BODY="@${GITHUB_REPOSITORY_OWNER} Week ${WEEK} Volumetrics is up: ${URL}"
+            [ -n "$NOTE" ] && BODY="${BODY}"$'\n\n'"${NOTE}"
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "📊 Week ${WEEK} Volumetrics is up" \
+              --body "$BODY" --assignee "$GITHUB_REPOSITORY_OWNER"
+          fi

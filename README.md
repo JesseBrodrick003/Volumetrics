@@ -12,7 +12,8 @@ Every **Tuesday 15:00 UTC** (8am Pacific in season), after Monday Night Football
 
 1. pulls the latest completed week from nflverse and builds every team's card (headshots included),
 2. commits the report to `docs/` and publishes it to GitHub Pages,
-3. opens an issue that @mentions you, which GitHub emails to your notification address with the link.
+3. emails the link to you and your friends from your iCloud address (friends are BCC'd).
+   If email isn't set up yet, it opens an issue that @mentions you instead, which GitHub emails to you.
 
 A **Wednesday** run fills in any team whose snap counts posted late, and does nothing if Tuesday
 already got everything. Run it any time from **Actions → Weekly Volumetrics → Run workflow**
@@ -22,8 +23,11 @@ Optional settings (**Settings → Secrets and variables → Actions**):
 - Secret `ANTHROPIC_API_KEY`: turns on the Claude voice pass for the takes.
 - Variable `VOLUMETRICS_BRAND`: the text in the top-right corner of every chart (default `VOLUMETRICS`).
 
-The link email goes to your GitHub notification email
-(**Settings → Notifications → Default notifications email**).
+**Email list** (same settings page):
+- Variable `EMAIL_FROM`: your iCloud address (the sender, and you always get a copy).
+- Secret `ICLOUD_APP_PASSWORD`: make one at account.apple.com → Sign-In and Security → App-Specific Passwords.
+- Secret `EMAIL_TO`: friends' addresses separated by commas. Edit this secret any time to add or remove people.
+  It's a secret (not a variable) because the repo is public; the log only ever shows a head count.
 
 ## Run it locally
 
