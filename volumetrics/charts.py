@@ -563,7 +563,7 @@ def _rb_bars(fig, tw: TeamWeek, colors: dict, L: Layout):
     fig.text(x0, ty, "RB Usage", fontsize=F["snap_title"], color=TEXT, weight="medium", va="top")
     fig.text(x0, sy, tw.rb_bar_subtitle, fontsize=F["snap_sub"], color=MUTED, va="top")  # subscript
 
-    backs = [p for p in tw.rbs() if p.snap_pct >= 0.05 or p.carries >= 2][:4]
+    backs = [p for p in tw.rbs() if p.snap_pct >= 0.05 or p.carries >= 2][:3]  # three groups stay readable
     bx, by, bwid, bh = L.bars
     lift = 0.07 if L.name == "portrait" else 0.10  # room for headshot, name and stats under the bars
     ax = fig.add_axes((bx, by + lift, bwid, bh - lift))
@@ -595,7 +595,9 @@ def _rb_bars(fig, tw: TeamWeek, colors: dict, L: Layout):
         ax.text(i, y, p.name, ha="center", va="top", fontsize=F["names"], color="#dfe3e9",
                 weight="medium", clip_on=False)
         y -= F["names"] * pt * 1.3 / ppy
-        extra = f"{p.carries} car · {p.hvt} HVT" + (f" · {p.xfp:.1f} xFP" if p.xfp is not None else "")
+        rolling = hasattr(tw, "weeks")  # window view: expected points per game played, not the total
+        xfp = None if p.xfp is None else (p.xfp / max(p.games, 1) if rolling else p.xfp)
+        extra = f"{p.carries} car · {p.hvt} HVT" + (f" · {xfp:.1f} xFP{'/g' if rolling else ''}" if xfp is not None else "")
         ax.text(i, y, extra, ha="center", va="top", fontsize=small, color=MUTED, clip_on=False)
 
 
