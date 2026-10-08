@@ -8,6 +8,7 @@ on:
     inputs:
       season: { description: "Season (blank = current)", required: false }
       week:   { description: "Week (blank = latest completed)", required: false }
+      email:  { description: "Send the email", type: boolean, default: true }
 
 permissions:
   contents: write   # commit the report into docs/
@@ -69,7 +70,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
       - name: Email the link
-        if: steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch'
+        if: (steps.report.outputs.built == 'true' || github.event_name == 'workflow_dispatch') && (github.event_name != 'workflow_dispatch' || inputs.email)
         env:
           GH_TOKEN: ${{ github.token }}
           SMTP_USER: ${{ vars.EMAIL_FROM }}                    # your iCloud address
