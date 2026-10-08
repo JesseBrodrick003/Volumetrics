@@ -88,6 +88,8 @@ def main(argv=None) -> int:
         log.warning("Snap counts not posted yet for: %s", ", ".join(missing))
     log.info("Season %s Week %s: building %d teams", season, week, len(todo))
 
+    if a.teams is None and (out_dir / "img").exists():
+        shutil.rmtree(out_dir / "img")  # full rebuild: clear old cards so stale files don't pile up
     use_llm = bool(os.getenv("ANTHROPIC_API_KEY")) and not a.no_llm
     entries, rows, takes = [], [], {}
     for team in todo:
