@@ -110,12 +110,19 @@ def main() -> int:
     ap.add_argument("--list-env", default="EMAIL_TO",
                     help="which secret holds the recipients (EMAIL_NEW = just people who haven't gotten it)")
     ap.add_argument("--individual", action="store_true",
-                    help="one email per person, addressed to them, and no copy to you")
+                    help="one email per person, addressed to them (nobody sees anyone else's address)")
+    ap.add_argument("--copy-me", action="store_true", help="also send you your own copy")
+    ap.add_argument("--me-only", action="store_true", help="send it to you and nobody else")
     a = ap.parse_args()
 
     sender = os.getenv("SMTP_USER", "").strip()
     password = os.getenv("SMTP_PASSWORD", "").strip()
-    people = [r for r in recipients(a.list_env) if r.lower() != sender.lower()]
+    if a.me_only:
+        people, a.individual = ([sender] if sender else []), True
+    else:
+        people = [r for r in recipients(a.list_env) if r.lower() != sender.lower()]
+        if a.copy_me and sender:
+            people.append(sender)
     if a.individual:  # catch-up sends: each person gets their own copy, nobody else is on it
         msgs = []
         for r in people:
@@ -144,7 +151,12 @@ def main() -> int:
         for m in msgs:
             s.send_message(m)
     # Counts only: the repo is public, so addresses never go in the log
-    who = f"{len(people)} new person(s)" if a.individual else f"you + {len(people)} friend(s)"
+    if a.me_only:
+        who = "you only"
+    elif a.individual:
+        who = f"{len(people) - (1 if a.copy_me else 0)} new person(s)" + (" + a copy to you" if a.copy_me else "")
+    else:
+        who = f"you + {len(people)} friend(s)"
     print(f"Sent Week {a.week} email to {who}.")
     return 0
 

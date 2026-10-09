@@ -93,8 +93,8 @@ get Waiver add / Buy / Sell; thin or mixed ones are tagged Watch. Each card list
 1. Settings → Secrets and variables → Actions → New repository secret `EMAIL_NEW` with just the new
    people's addresses (commas between them).
 2. Actions → Weekly Volumetrics → Run workflow: Week = the week to send, Send the email = on,
-   Who gets the email = "only the people in EMAIL_NEW". Each new person gets their own copy; nobody
-   else gets it again.
+   Who gets the email = "only the people in EMAIL_NEW". Each new person gets their own copy and you get
+   one too; nobody else gets it again. ("just me" sends it only to you, handy for checking.)
 3. Add them to `EMAIL_TO` so they're on the list every Tuesday, and clear `EMAIL_NEW`.
 
 ## Your ESPN league

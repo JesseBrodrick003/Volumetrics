@@ -13,7 +13,7 @@ on:
       send_to:
         description: "Who gets the email"
         type: choice
-        options: ["everyone", "only the people in EMAIL_NEW"]
+        options: ["everyone", "only the people in EMAIL_NEW", "just me"]
         default: "everyone"
 
 permissions:
@@ -96,9 +96,13 @@ jobs:
           fi
           if [ -n "$SMTP_PASSWORD" ] && [ -n "$SMTP_USER" ]; then
             if [ "${{ inputs.send_to }}" = "only the people in EMAIL_NEW" ]; then
-              # Catch-up: just the new people, one email each; nobody else gets it again
+              # Catch-up: just the new people, one email each, plus your own copy; nobody else gets it again
               python send_email.py --season "${{ steps.report.outputs.season }}" --week "$WEEK" --url "$URL" \
-                --list-env EMAIL_NEW --individual
+                --list-env EMAIL_NEW --individual --copy-me
+              exit 0
+            fi
+            if [ "${{ inputs.send_to }}" = "just me" ]; then
+              python send_email.py --season "${{ steps.report.outputs.season }}" --week "$WEEK" --url "$URL" --me-only
               exit 0
             fi
             # Real email from your iCloud: you + everyone in EMAIL_TO (BCC)
